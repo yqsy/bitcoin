@@ -114,28 +114,43 @@ UniValue generateBlocks(std::shared_ptr<CReserveScript> coinbaseScript, int nGen
         nHeight = chainActive.Height();
         nHeightEnd = nHeight+nGenerate;
     }
+
     unsigned int nExtraNonce = 0;
+
     UniValue blockHashes(UniValue::VARR);
+
+    // 1. 一次性生成多块且完成
+    // 2. 原子停止
     while (nHeight < nHeightEnd && !ShutdownRequested())
     {
         std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript));
+
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+
         CBlock *pblock = &pblocktemplate->block;
         {
             LOCK(cs_main);
             IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
         }
+
+        // pow维度:
+        // 1. 块hash 2. 难度 3. Consensus::Params.powLimit WHY
         while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
             ++pblock->nNonce;
             --nMaxTries;
         }
+
+        // 1. 超过最大尝试次数 (默认: 100w)
         if (nMaxTries == 0) {
             break;
         }
+
+        //  2. 新生成的块超过内部循环次数 (写死: 65536) 也就是每次新生成的块尝试 (0 ~ 65535)
         if (pblock->nNonce == nInnerLoopCount) {
             continue;
         }
+
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
         if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");

@@ -98,6 +98,7 @@ void BlockAssembler::resetBlock()
 
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fMineWitnessTx)
 {
+    // 1. 获得时间(微秒)
     int64_t nTimeStart = GetTimeMicros();
 
     resetBlock();
@@ -108,17 +109,26 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         return nullptr;
     pblock = &pblocktemplate->block; // pointer for convenience
 
+
+    // 2. 初始化 A. 交易数组 B. 费用? C. 见证花费?
     // Add dummy coinbase tx as first transaction
     pblock->vtx.emplace_back();
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
 
+
     LOCK2(cs_main, mempool.cs);
+
+    // 3. 获得上一区块的索引
     CBlockIndex* pindexPrev = chainActive.Tip();
     assert(pindexPrev != nullptr);
+
+    // 4. 计算当前区块的高度
     nHeight = pindexPrev->nHeight + 1;
 
+    // 5. 计算版本
     pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
+
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (chainparams.MineBlocksOnDemand())

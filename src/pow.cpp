@@ -16,7 +16,10 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
     // Only change once per difficulty adjustment interval
-    if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
+
+    int64_t difficulityAdjustmentInterval =  params.DifficultyAdjustmentInterval();
+
+    if ((pindexLast->nHeight+1) % difficulityAdjustmentInterval != 0)
     {
         if (params.fPowAllowMinDifficultyBlocks)
         {
@@ -71,10 +74,13 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     return bnNew.GetCompact();
 }
 
+// 只是检查一下hash
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params)
 {
     bool fNegative;
     bool fOverflow;
+
+    // 将32字节数字 转换成8组,每组4字节,
     arith_uint256 bnTarget;
 
     bnTarget.SetCompact(nBits, &fNegative, &fOverflow);

@@ -206,6 +206,7 @@ template unsigned int base_uint<256>::bits() const;
 arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bool* pfOverflow)
 {
     int nSize = nCompact >> 24;
+
     uint32_t nWord = nCompact & 0x007fffff;
     if (nSize <= 3) {
         nWord >>= 8 * (3 - nSize);
@@ -246,6 +247,7 @@ uint32_t arith_uint256::GetCompact(bool fNegative) const
     return nCompact;
 }
 
+
 uint256 ArithToUint256(const arith_uint256 &a)
 {
     uint256 b;
@@ -253,6 +255,8 @@ uint256 ArithToUint256(const arith_uint256 &a)
         WriteLE32(b.begin() + x*4, a.pn[x]);
     return b;
 }
+
+
 arith_uint256 UintToArith256(const uint256 &a)
 {
     arith_uint256 b;

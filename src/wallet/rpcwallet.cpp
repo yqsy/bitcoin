@@ -3881,6 +3881,7 @@ static UniValue bumpfee(const JSONRPCRequest& request)
 
 UniValue generate(const JSONRPCRequest& request)
 {
+
     std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
     CWallet* const pwallet = wallet.get();
 
@@ -3888,6 +3889,7 @@ UniValue generate(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
+
 
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
         throw std::runtime_error(
@@ -3906,6 +3908,7 @@ UniValue generate(const JSONRPCRequest& request)
 
     int num_generate = request.params[0].get_int();
     uint64_t max_tries = 1000000;
+
     if (!request.params[1].isNull()) {
         max_tries = request.params[1].get_int();
     }
