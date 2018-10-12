@@ -193,6 +193,7 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  */
+
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -203,6 +204,15 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     tx.vout.clear();
     /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
     s >> tx.vin;
+
+    // 两个条件(真): 1. vin长度为0  2. stream支持隔离见证
+    // (假): 1. vin长度>0  2.  stream禁止隔离见证
+
+    // 1真 2真 -> 隔离见证
+    // 1假 2真 -> vin长度>0的普通输入数据
+    // 1真 2假 -> vin长度=0的普通输入数据 -- ? vin长度可以等于0么
+    // 1假 2假 -> vin长度>0的普通输入数据
+
     if (tx.vin.size() == 0 && fAllowWitness) {
         /* We read a dummy or an empty vin. */
         s >> flags;
@@ -214,6 +224,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         /* We read a non-empty vin. Assume a normal vout follows. */
         s >> tx.vout;
     }
+
     if ((flags & 1) && fAllowWitness) {
         /* The witness flag is present, and we support witnesses. */
         flags ^= 1;
@@ -230,6 +241,8 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 
 template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
+
+    // 如果stream的版本支持隔离见证
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
 
     s << tx.nVersion;
@@ -244,11 +257,13 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     if (flags) {
         /* Use extended format in case witnesses are to be serialized. */
         std::vector<CTxIn> vinDummy;
-        s << vinDummy;
-        s << flags;
+        s << vinDummy; // unsigned char 0x00  用到了vector 序列化, 不过写入的还是 0x00
+        s << flags; // 隔离见证: unsigned char 0x01  可扩展
     }
+
     s << tx.vin;
     s << tx.vout;
+
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;
@@ -293,6 +308,8 @@ private:
 
 public:
     /** Construct a CTransaction that qualifies as IsNull() */
+
+
     CTransaction();
 
     /** Convert a CMutableTransaction into a CTransaction. */
@@ -347,6 +364,8 @@ public:
 
     bool HasWitness() const
     {
+        // 如果有一笔in的scriptWitness不为空, 则表示为是隔离见证
+
         for (size_t i = 0; i < vin.size(); i++) {
             if (!vin[i].scriptWitness.IsNull()) {
                 return true;
