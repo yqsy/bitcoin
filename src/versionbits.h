@@ -10,19 +10,22 @@
 
 /** What block version to use for new blocks (pre versionbits) */
 static const int32_t VERSIONBITS_LAST_OLD_BLOCK_VERSION = 4;
+
 /** What bits to set in version for versionbits blocks */
 static const int32_t VERSIONBITS_TOP_BITS = 0x20000000UL;
+
 /** What bitmask determines whether versionbits is in use */
 static const int32_t VERSIONBITS_TOP_MASK = 0xE0000000UL;
+
 /** Total bits available for versionbits */
 static const int32_t VERSIONBITS_NUM_BITS = 29;
 
 enum class ThresholdState {
-    DEFINED,
-    STARTED,
-    LOCKED_IN,
-    ACTIVE,
-    FAILED,
+    DEFINED,       // 已定义?
+    STARTED,       // 开始
+    LOCKED_IN,     // 锁定?
+    ACTIVE,        // 激活
+    FAILED,        // 失败
 };
 
 // A map that gives the state for blocks whose height is a multiple of Period().
@@ -37,6 +40,7 @@ struct VBDeploymentInfo {
     bool gbt_force;
 };
 
+// 软分叉
 struct BIP9Stats {
     int period;
     int threshold;
@@ -61,7 +65,10 @@ protected:
 public:
     BIP9Stats GetStateStatisticsFor(const CBlockIndex* pindex, const Consensus::Params& params) const;
     // Note that the functions below take a pindexPrev as input: they compute information for block B based on its parent.
+
     ThresholdState GetStateFor(const CBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
+
+
     int GetStateSinceHeightFor(const CBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
 };
 

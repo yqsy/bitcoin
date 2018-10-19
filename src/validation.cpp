@@ -1690,7 +1690,7 @@ void ThreadScriptCheck() {
 }
 
 // Protected by cs_main
-VersionBitsCache versionbitscache;
+VersionBitsCache versionbitscache; // map [CBlockIndex*]ThresholdState
 
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
@@ -1698,6 +1698,7 @@ int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Para
     int32_t nVersion = VERSIONBITS_TOP_BITS;
 
     for (int i = 0; i < (int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; i++) {
+
 
         ThresholdState state = VersionBitsState(pindexPrev, params, static_cast<Consensus::DeploymentPos>(i), versionbitscache);
 
@@ -1721,7 +1722,7 @@ private:
 
 public:
     explicit WarningBitsConditionChecker(int bitIn) : bit(bitIn) {}
-
+`
     int64_t BeginTime(const Consensus::Params& params) const override { return 0; }
     int64_t EndTime(const Consensus::Params& params) const override { return std::numeric_limits<int64_t>::max(); }
     int Period(const Consensus::Params& params) const override { return params.nMinerConfirmationWindow; }

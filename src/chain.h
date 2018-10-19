@@ -207,7 +207,9 @@ public:
     uint32_t nStatus;
 
     //! block header
+    // block头的version, 用位图来验证该版本是否包含某种功能
     int32_t nVersion;
+
     uint256 hashMerkleRoot;
     uint32_t nTime;
     uint32_t nBits;
@@ -313,6 +315,7 @@ public:
         int64_t* pend = &pmedian[nMedianTimeSpan];
 
         const CBlockIndex* pindex = this;
+
         for (int i = 0; i < nMedianTimeSpan && pindex; i++, pindex = pindex->pprev)
             *(--pbegin) = pindex->GetBlockTime();
 

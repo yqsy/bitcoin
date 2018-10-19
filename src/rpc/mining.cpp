@@ -111,8 +111,8 @@ UniValue generateBlocks(std::shared_ptr<CReserveScript> coinbaseScript, int nGen
 
     {   // Don't keep cs_main locked
         LOCK(cs_main);
-        nHeight = chainActive.Height();
-        nHeightEnd = nHeight+nGenerate;
+        nHeight = chainActive.Height(); // 高度
+        nHeightEnd = nHeight+nGenerate; // 高度
     }
 
     unsigned int nExtraNonce = 0;

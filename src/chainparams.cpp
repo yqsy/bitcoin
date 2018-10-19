@@ -74,19 +74,34 @@ class CMainParams : public CChainParams {
 public:
     CMainParams() {
         strNetworkID = "main";
+
+        // 1. 每隔多少个区块减半产出
         consensus.nSubsidyHalvingInterval = 210000;
+
+        // 2. BIP16 BIP34 BIP BIP66 信息配置
         consensus.BIP16Exception = uint256S("0x00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22");
         consensus.BIP34Height = 227931;
         consensus.BIP34Hash = uint256S("0x000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8");
         consensus.BIP65Height = 388381; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
         consensus.BIP66Height = 363725; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
+
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-        consensus.nPowTargetSpacing = 10 * 60;
+
+        // 3. A. 难度调整时间(2周) B. 区块产生时间(10分) (A/B=两周理应产生的区块)
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // 区块难度调整时间, 2周
+        consensus.nPowTargetSpacing = 10 * 60;  // 区块产生时间 10 分钟
+
+        // 4. A. 默认不允许最低难度 B. ? TODO
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
+
+        // 5. bip9 规则同意比例?
         consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
+
+        // 两周期望产生的块数  1. 每产生2016个块就会判断时间时间达到两周根据时间偏差调整难度 2. ? 猜测 bip9规则执行?
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+
+        // 6. bip9 所有规则预设
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
@@ -101,9 +116,10 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1479168000; // November 15th, 2016.
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1510704000; // November 15th, 2017.
 
+
+        // 7. TODO 两个hash值是做什么的?
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000028822fef1c230963535a90d");
-
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000000000000002e63058c023a9a1de233554f28c7b21380b6c9003f36a8"); //534292
 
@@ -112,18 +128,27 @@ public:
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
          * a large 32-bit integer with any alignment.
          */
+         // 8. TODO pchMessageStart
         pchMessageStart[0] = 0xf9;
         pchMessageStart[1] = 0xbe;
         pchMessageStart[2] = 0xb4;
         pchMessageStart[3] = 0xd9;
+
+        // 9. 默认端口
         nDefaultPort = 8333;
+
+        // 10. 修剪高度?
         nPruneAfterHeight = 100000;
 
+        // 11. *** 创世区块
         genesis = CreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
+
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
+
+        // 12. p2p seed 初始化
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
         // This is fine at runtime as we'll fall back to using them as a oneshot if they don't support the
@@ -137,12 +162,15 @@ public:
         vSeeds.emplace_back("seed.btc.petertodd.org"); // Peter Todd, only supports x1, x5, x9, and xd
         vSeeds.emplace_back("seed.bitcoin.sprovoost.nl"); // Sjors Provoost
 
+        // 13.  base58Prefixes 前缀初始化
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
 
+
+        // 14. TODO 其他一些初始化
         bech32_hrp = "bc";
 
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
@@ -151,6 +179,7 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
+        // 15. 初始化 checkpointData ????
         checkpointData = {
             {
                 { 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d")},
@@ -225,10 +254,12 @@ public:
         pchMessageStart[1] = 0x11;
         pchMessageStart[2] = 0x09;
         pchMessageStart[3] = 0x07;
+
         nDefaultPort = 18333;
         nPruneAfterHeight = 1000;
 
         genesis = CreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
+
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));

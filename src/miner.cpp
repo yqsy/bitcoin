@@ -110,12 +110,11 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock = &pblocktemplate->block; // pointer for convenience
 
 
-    // 2. 初始化 A. 交易数组 B. 费用? C. 见证花费?
+    // 2. 初始化 A. 交易数组压入一笔空的交易? B. 费用? C. 见证花费?
     // Add dummy coinbase tx as first transaction
     pblock->vtx.emplace_back();
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-
 
     LOCK2(cs_main, mempool.cs);
 
@@ -131,6 +130,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
+
+    // 6. 是否需要挖矿 ,
     if (chainparams.MineBlocksOnDemand())
         pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
 

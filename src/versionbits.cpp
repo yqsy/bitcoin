@@ -22,29 +22,44 @@ const struct VBDeploymentInfo VersionBitsDeploymentInfo[Consensus::MAX_VERSION_B
 
 ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const
 {
+    // 间隔周期(2周),除了2016个块后调整一次难度
     int nPeriod = Period(params);
+
+
+    // 同意阀值,1916个块后同意
     int nThreshold = Threshold(params);
+
+
+    // 开始结束 epoch time (s)
     int64_t nTimeStart = BeginTime(params);
     int64_t nTimeTimeout = EndTime(params);
+
 
     // Check if this deployment is always active.
     if (nTimeStart == Consensus::BIP9Deployment::ALWAYS_ACTIVE) {
         return ThresholdState::ACTIVE;
     }
 
+
     // A block's state is always the same as that of the first of its period, so it is computed based on a pindexPrev whose height equals a multiple of nPeriod - 1.
+    //In [1]: for i in range(1,1024):
+    //   ...:     print(i, i-1-(i)%144)
+    // [1,143]=>-1 , [144,287]=>143, [288,431]=>287
     if (pindexPrev != nullptr) {
         pindexPrev = pindexPrev->GetAncestor(pindexPrev->nHeight - ((pindexPrev->nHeight + 1) % nPeriod));
     }
 
+
     // Walk backwards in steps of nPeriod to find a pindexPrev whose information is known
     std::vector<const CBlockIndex*> vToCompute;
     while (cache.count(pindexPrev) == 0) {
+
         if (pindexPrev == nullptr) {
             // The genesis block is by definition defined.
             cache[pindexPrev] = ThresholdState::DEFINED;
             break;
         }
+
         if (pindexPrev->GetMedianTimePast() < nTimeStart) {
             // Optimization: don't recompute down further, as we know every earlier block will be before the start time
             cache[pindexPrev] = ThresholdState::DEFINED;
@@ -187,15 +202,21 @@ protected:
     int64_t BeginTime(const Consensus::Params& params) const override { return params.vDeployments[id].nStartTime; }
     int64_t EndTime(const Consensus::Params& params) const override { return params.vDeployments[id].nTimeout; }
     int Period(const Consensus::Params& params) const override { return params.nMinerConfirmationWindow; }
+
+    // 同意阀值
     int Threshold(const Consensus::Params& params) const override { return params.nRuleChangeActivationThreshold; }
 
+
+    // 验证区块是否赞成部署
     bool Condition(const CBlockIndex* pindex, const Consensus::Params& params) const override
     {
+        //   2. 检查块头的version 是否满足BIP9的某个特性
         return (((pindex->nVersion & VERSIONBITS_TOP_MASK) == VERSIONBITS_TOP_BITS) && (pindex->nVersion & Mask(params)) != 0);
     }
 
 public:
     explicit VersionBitsConditionChecker(Consensus::DeploymentPos id_) : id(id_) {}
+
     uint32_t Mask(const Consensus::Params& params) const { return ((uint32_t)1) << params.vDeployments[id].bit; }
 };
 
