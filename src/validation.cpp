@@ -1161,13 +1161,24 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
+    // 高度 / 累计减半产出的数量
+    // 547807(2018年10月29日) / 210000 == 2
     int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+
     // Force block reward to zero when right shift is undefined.
+    // halvings 属于 [0,63]
     if (halvings >= 64)
         return 0;
 
+    // 单位是聪
     CAmount nSubsidy = 50 * COIN;
+
+    // 区块产生
+    // 10 min = 1 , 1 hour = 6 , 1 day = 144, 1 year = 52560 ,　4 year = 210240
     // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
+
+    // 5000000000 >> (高度 / 累计减半产出的数量)
+    //
     nSubsidy >>= halvings;
     return nSubsidy;
 }
@@ -1722,7 +1733,7 @@ private:
 
 public:
     explicit WarningBitsConditionChecker(int bitIn) : bit(bitIn) {}
-`
+
     int64_t BeginTime(const Consensus::Params& params) const override { return 0; }
     int64_t EndTime(const Consensus::Params& params) const override { return std::numeric_limits<int64_t>::max(); }
     int Period(const Consensus::Params& params) const override { return params.nMinerConfirmationWindow; }

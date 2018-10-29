@@ -80,6 +80,8 @@ int static inline GetSkipHeight(int height) {
     return (height & 1) ? InvertLowestOne(InvertLowestOne(height - 1)) + 1 : InvertLowestOne(height);
 }
 
+
+// 返回指定高度的区块索引
 const CBlockIndex* CBlockIndex::GetAncestor(int height) const
 {
     if (height > nHeight || height < 0) {

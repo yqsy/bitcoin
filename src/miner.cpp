@@ -98,6 +98,7 @@ void BlockAssembler::resetBlock()
 
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fMineWitnessTx)
 {
+    // YQMARK 创建新的区块
     // 1. 获得时间(微秒)
     int64_t nTimeStart = GetTimeMicros();
 
@@ -162,15 +163,26 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     nLastBlockTx = nBlockTx;
     nLastBlockWeight = nBlockWeight;
 
+    // 7. 创建奖励的交易
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
+
+    // vin[0] 设置为null
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
+
+    // vout[0] 的锁定脚本为 函数外部传入的锁定脚本 , 输出数量为动态计算的
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+
+    // vin[0] 的见证脚本输入 高度 + OP_0
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+
+    // 赋值到vtx[0]
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
+
+
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
     pblocktemplate->vTxFees[0] = -nFees;
 
