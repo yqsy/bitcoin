@@ -51,20 +51,30 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
 {
+
+    // YQMARK 难度调整
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;
 
+
+    // 2016个块的时间
     // Limit adjustment step
     int64_t nActualTimespan = pindexLast->GetBlockTime() - nFirstBlockTime;
+
+
+    // 2016个块的时间属于[3.5,56]天之间
     if (nActualTimespan < params.nPowTargetTimespan/4)
         nActualTimespan = params.nPowTargetTimespan/4;
+
     if (nActualTimespan > params.nPowTargetTimespan*4)
         nActualTimespan = params.nPowTargetTimespan*4;
 
     // Retarget
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
+
     arith_uint256 bnNew;
     bnNew.SetCompact(pindexLast->nBits);
+
     bnNew *= nActualTimespan;
     bnNew /= params.nPowTargetTimespan;
 
@@ -77,8 +87,8 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
 // 只是检查一下hash
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params)
 {
-    bool fNegative;
-    bool fOverflow;
+    bool fNegative;  // 否定?
+    bool fOverflow;  // 溢出
 
     // 将32字节数字 转换成8组,每组4字节,
     arith_uint256 bnTarget;
@@ -89,6 +99,7 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(params.powLimit))
         return false;
 
+    // 如果得出来的hash,大于target则算计算失败
     // Check proof of work matches claimed amount
     if (UintToArith256(hash) > bnTarget)
         return false;

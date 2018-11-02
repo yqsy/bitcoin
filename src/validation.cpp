@@ -1705,6 +1705,8 @@ VersionBitsCache versionbitscache; // map [CBlockIndex*]ThresholdState
 
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
+
+    // YQMARK 软分叉 获得版本号具体细节
     LOCK(cs_main);
     int32_t nVersion = VERSIONBITS_TOP_BITS;
 
@@ -3217,9 +3219,9 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
             out.scriptPubKey.resize(38);
             out.scriptPubKey[0] = OP_RETURN;
             out.scriptPubKey[1] = 0x24;
-            out.scriptPubKey[2] = 0xaa;
+            out.scriptPubKey[2] = 0xaa; // OP_HASH256
             out.scriptPubKey[3] = 0x21;
-            out.scriptPubKey[4] = 0xa9;
+            out.scriptPubKey[4] = 0xa9; // OP_HASH160
             out.scriptPubKey[5] = 0xed;
             memcpy(&out.scriptPubKey[6], witnessroot.begin(), 32);
             commitment = std::vector<unsigned char>(out.scriptPubKey.begin(), out.scriptPubKey.end());

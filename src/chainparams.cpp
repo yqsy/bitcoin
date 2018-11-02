@@ -75,6 +75,8 @@ public:
     CMainParams() {
         strNetworkID = "main";
 
+        // YQMARK 重要的初始化参数
+
         // 1. 每隔多少个区块减半产出
         consensus.nSubsidyHalvingInterval = 210000;
 
