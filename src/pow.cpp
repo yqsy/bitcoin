@@ -13,32 +13,51 @@
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
+
+    // 最小难度限制
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
     // Only change once per difficulty adjustment interval
 
+    // 2016个块调整一次难度
     int64_t difficulityAdjustmentInterval =  params.DifficultyAdjustmentInterval();
+
+    // 上一个区块的高度 0.1.2...
+    // pindexLast->nHeight+1  == 生成区块 1.2.3...
+
+    // 1 % 2016 = 1 , 2015 % 2016 = 2015,  [1,2016)
+    // 2017 % 2016 = 1, 4031 % 2016 = 2015 [2017,4032)
 
     if ((pindexLast->nHeight+1) % difficulityAdjustmentInterval != 0)
     {
+
+        // 主网false
         if (params.fPowAllowMinDifficultyBlocks)
         {
             // Special difficulty rule for testnet:
             // If the new block's timestamp is more than 2* 10 minutes
             // then allow mining of a min-difficulty block.
+
             if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing*2)
                 return nProofOfWorkLimit;
             else
             {
                 // Return the last non-special-min-difficulty-rules-block
+
                 const CBlockIndex* pindex = pindexLast;
                 while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
                     pindex = pindex->pprev;
+
                 return pindex->nBits;
             }
         }
+
+        // 主网直接返回上一个区块的难度,也就是在2015个区块之内难度不变
         return pindexLast->nBits;
     }
+
+    // 2016 % 2016 = 0
+    // 4032 % 2016 = 0
 
     // Go back by what we want to be 14 days worth of blocks
     int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
