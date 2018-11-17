@@ -201,6 +201,8 @@ template void base_uint<256>::SetHex(const char*);
 template void base_uint<256>::SetHex(const std::string&);
 template unsigned int base_uint<256>::bits() const;
 
+
+// nBits => traget
 // This implementation directly uses shifts instead of going
 // through an intermediate MPI representation.
 arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bool* pfOverflow)
@@ -224,6 +226,7 @@ arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bo
     return *this;
 }
 
+// target => nBits
 uint32_t arith_uint256::GetCompact(bool fNegative) const
 {
     int nSize = (bits() + 7) / 8;

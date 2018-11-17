@@ -89,11 +89,15 @@ const CBlockIndex* CBlockIndex::GetAncestor(int height) const
     }
 
     const CBlockIndex* pindexWalk = this;
+
+    // 高度2015
     int heightWalk = nHeight;
 
+    // height: 0
     while (heightWalk > height) {
 
         int heightSkip = GetSkipHeight(heightWalk);
+
         int heightSkipPrev = GetSkipHeight(heightWalk - 1);
 
 
@@ -106,6 +110,7 @@ const CBlockIndex* CBlockIndex::GetAncestor(int height) const
             // Only follow pskip if pprev->pskip isn't better than pskip->pprev.
             pindexWalk = pindexWalk->pskip;
             heightWalk = heightSkip;
+
         } else {
             assert(pindexWalk->pprev);
             pindexWalk = pindexWalk->pprev;
