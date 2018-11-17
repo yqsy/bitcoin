@@ -183,6 +183,9 @@ static bool AppInit(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+    char buf[100] = {};
+    fgets(buf , 80, stdin);
+
     SetupEnvironment();
 
     // Connect bitcoind signal handlers
