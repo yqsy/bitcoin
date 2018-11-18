@@ -96,7 +96,7 @@ protected:
     std::string bech32_hrp;
     std::string strNetworkID;
     CBlock genesis;
-    std::vector<SeedSpec6> vFixedSeeds;
+    std::vector<SeedSpec6> vFixedSeeds; // IPV6 dnsseed
     bool fDefaultConsistencyChecks;
     bool fRequireStandard;
     bool fMineBlocksOnDemand;

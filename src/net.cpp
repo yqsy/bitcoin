@@ -1793,7 +1793,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
     int64_t nNextFeeler = PoissonNextSend(nStart*1000*1000, FEELER_INTERVAL);
     while (!interruptNet)
     {
-        ProcessOneShot();
+        ProcessOneShot(); // YQMARK: 命令行连接 ProcessOneShot！
 
         if (!interruptNet.sleep_for(std::chrono::milliseconds(500)))
             return;
@@ -1802,7 +1802,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
         if (interruptNet)
             return;
 
-        // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
+        // Add seed nodes if DNS seeds are all down (an infrastructure attack?). // 超过60s 就尝试连接ipv6
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
             static bool done = false;
             if (!done) {
@@ -2520,7 +2520,7 @@ void CConnman::MarkAddressGood(const CAddress& addr)
 
 void CConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
 {
-    addrman.Add(vAddr, addrFrom, nTimePenalty);
+     addrman.Add(vAddr, addrFrom, nTimePenalty);
 }
 
 std::vector<CAddress> CConnman::GetAddresses()

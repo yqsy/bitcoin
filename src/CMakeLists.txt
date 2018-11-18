@@ -11,6 +11,6 @@ include_directories(${PROJECT_SOURCE_DIR}/secp256k1/include
         )
 
 
-file(GLOB_RECURSE SRCS *.cpp *,h)
+file(GLOB_RECURSE SRCS *.cpp *.h)
 
 add_executable(src ${SRCS})

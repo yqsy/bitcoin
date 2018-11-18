@@ -137,7 +137,7 @@ public:
         unsigned int nReceiveFloodSize = 0;
         uint64_t nMaxOutboundTimeframe = 0;
         uint64_t nMaxOutboundLimit = 0;
-        std::vector<std::string> vSeedNodes;
+        std::vector<std::string> vSeedNodes; // 命令行输入的ipv4 seeds
         std::vector<CSubNet> vWhitelistedRange;
         std::vector<CService> vBinds, vWhiteBinds;
         bool m_use_addrman_outgoing = true;
@@ -401,7 +401,7 @@ private:
     bool setBannedIsDirty;
     bool fAddressesInitialized;
     CAddrMan addrman;  // YQMARK: 存放seeds节点
-    std::deque<std::string> vOneShots;
+    std::deque<std::string> vOneShots; // 命令行存放seeds的节点
     CCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes GUARDED_BY(cs_vAddedNodes);
     CCriticalSection cs_vAddedNodes;
