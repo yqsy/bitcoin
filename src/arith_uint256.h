@@ -25,8 +25,8 @@ template<unsigned int BITS>
 class base_uint
 {
 protected:
-    static constexpr int WIDTH = BITS / 32;
-    uint32_t pn[WIDTH];
+    static constexpr int WIDTH = BITS / 32;  // 256 / 32 = 8 组, 每组4字节
+    uint32_t pn[WIDTH]; // 8个4 uint32_t的数组
 public:
 
     base_uint()
@@ -275,7 +275,7 @@ public:
      * complexities of the sign bit and using base 256 are probably an
      * implementation accident.
      */
-    arith_uint256& SetCompact(uint32_t nCompact, bool *pfNegative = nullptr, bool *pfOverflow = nullptr);
+    arith_uint256& SetCompact(uint32_t nBits, bool *pfNegative = nullptr, bool *pfOverflow = nullptr);
     uint32_t GetCompact(bool fNegative = false) const;
 
     friend uint256 ArithToUint256(const arith_uint256 &);

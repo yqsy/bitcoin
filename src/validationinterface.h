@@ -151,7 +151,7 @@ protected:
 };
 
 struct MainSignalsInstance;
-class CMainSignals {
+class CCMainSignals {
 private:
     std::unique_ptr<MainSignalsInstance> m_internals;
 

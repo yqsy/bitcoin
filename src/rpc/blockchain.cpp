@@ -62,15 +62,21 @@ double GetDifficulty(const CBlockIndex* blockindex)
         return 1.0;
     }
 
+    // 取指数
     int nShift = (blockindex->nBits >> 24) & 0xff;
+
+
     double dDiff =
         (double)0x0000ffff / (double)(blockindex->nBits & 0x00ffffff);
 
+    // < 29 算target时是向左移动
     while (nShift < 29)
     {
         dDiff *= 256.0;
         nShift++;
     }
+
+    // > 29 是向右移动
     while (nShift > 29)
     {
         dDiff /= 256.0;
