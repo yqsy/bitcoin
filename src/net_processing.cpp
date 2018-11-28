@@ -406,12 +406,21 @@ static void ProcessBlockAvailability(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(cs_
     CNodeState *state = State(nodeid);
     assert(state != nullptr);
 
+    // 对方发过来的上一次区块的hash
     if (!state->hashLastUnknownBlock.IsNull()) {
+
+        // 对方上一次发过来的区块
         const CBlockIndex* pindex = LookupBlockIndex(state->hashLastUnknownBlock);
+
         if (pindex && pindex->nChainWork > 0) {
+
             if (state->pindexBestKnownBlock == nullptr || pindex->nChainWork >= state->pindexBestKnownBlock->nChainWork) {
+
+                // 对方已知最长链改为  上一次发过来的hash
                 state->pindexBestKnownBlock = pindex;
             }
+
+            // 对方上一次的announce的block设置为null
             state->hashLastUnknownBlock.SetNull();
         }
     }
@@ -419,18 +428,24 @@ static void ProcessBlockAvailability(NodeId nodeid) EXCLUSIVE_LOCKS_REQUIRED(cs_
 
 /** Update tracking information about which blocks a peer is assumed to have. */
 static void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
+
+    // 从p2p 的 对手方得到CNodeState
     CNodeState *state = State(nodeid);
     assert(state != nullptr);
 
+    //
     ProcessBlockAvailability(nodeid);
 
     const CBlockIndex* pindex = LookupBlockIndex(hash);
+
+    // 如果该区块的工作量大于对方已知最长
     if (pindex && pindex->nChainWork > 0) {
         // An actually better block was announced.
         if (state->pindexBestKnownBlock == nullptr || pindex->nChainWork >= state->pindexBestKnownBlock->nChainWork) {
             state->pindexBestKnownBlock = pindex;
         }
     } else {
+        // 不可能吧!!!
         // An unknown block was announced; just assume that the latest one is the best one.
         state->hashLastUnknownBlock = hash;
     }
@@ -2463,7 +2478,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         if (pindex->nStatus & BLOCK_HAVE_DATA) // Nothing to do here
             return true;
 
-        // 发过来的区块的工作量积累是否比当前内存链记录的最长长度还长
+
         if (pindex->nChainWork <= chainActive.Tip()->nChainWork || // We know something better
                 pindex->nTx != 0) { // We had this block at some point, but pruned it
             if (fAlreadyInFlight) {
