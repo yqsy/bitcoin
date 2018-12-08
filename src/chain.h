@@ -308,6 +308,7 @@ public:
 
     static constexpr int nMedianTimeSpan = 11;
 
+
     int64_t GetMedianTimePast() const
     {
         int64_t pmedian[nMedianTimeSpan];

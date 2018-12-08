@@ -16,14 +16,24 @@
 
 bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
+    // a. nLockTime 为 0没有任何问题
     if (tx.nLockTime == 0)
         return true;
+
+
+    // 块数上或时间上还没有解锁
+    // b.  < 50 亿 是按照区块的算法
+    // >= 50亿 是按照时间的算法, 和  1. 之前11个区块的中位数做比较 (开启了CSV, BIP 68 112 113 ) 2. 和最新的区块的时间做比较
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
+
+    // 时间已经到了,过了锁定的时间, 但是交易中还有in还有别的字段的含义
     for (const auto& txin : tx.vin) {
         if (!(txin.nSequence == CTxIn::SEQUENCE_FINAL))
             return false;
     }
+
+
     return true;
 }
 
