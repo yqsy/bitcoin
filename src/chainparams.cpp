@@ -146,7 +146,7 @@ public:
 
         // 4. A. 默认不允许最低难度 B. ? TODO
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.fPowNoRetargeting = false;
+        consensus.fPowNoRetargeting = true;
 
         // 5. bip9 规则同意比例?
         consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
