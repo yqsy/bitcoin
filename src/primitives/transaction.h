@@ -203,6 +203,15 @@ struct CMutableTransaction;
  * - uint32_t nLockTime
  */
 
+
+//vin 0 vout 0 flag 0
+//
+//vin 0 vout 1 => flag 1  (又读vin)  这个逻辑有问题的!!!
+//
+//vin 0 vout 0 隔离见证 flag 1
+//
+//vin 0 vout 1 隔离见证 flag 1
+
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -216,11 +225,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 
     // 两个条件(真): 1. vin长度为0  2. stream支持隔离见证
     // (假): 1. vin长度>0  2.  stream禁止隔离见证
-
-    // 1真 2真 -> 隔离见证
-    // 1假 2真 -> vin长度>0的普通输入数据
-    // 1真 2假 -> vin长度=0的普通输入数据 -- ? vin长度可以等于0么
-    // 1假 2假 -> vin长度>0的普通输入数据
 
     if (tx.vin.size() == 0 && fAllowWitness) {
         /* We read a dummy or an empty vin. */
