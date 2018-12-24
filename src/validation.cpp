@@ -2010,6 +2010,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // fEnforceBIP30 或 2046年9月22日 之后?
     // 如果缓存(或磁盘)中有这笔hash的输出,就返回错误
     // 除非是nNonce 循环过来了, 然后又生成新的奖励交易...
+    // 不允许有重复输出
+    // 比特币主链不检查 因为 1.  bip34已经产生  2. bip34高度的区块哈希值符合 3. 高度不会超过198w
+    // 私钥链检查 因为 1. bip34没有产生 2. bip34产生了高度也不符合
     if (fEnforceBIP30 || pindex->nHeight >= BIP34_IMPLIES_BIP30_LIMIT) {
         for (const auto& tx : block.vtx) {
             for (size_t o = 0; o < tx->vout.size(); o++) {
