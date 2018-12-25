@@ -1718,22 +1718,14 @@ VersionBitsCache versionbitscache; // map [CBlockIndex*]ThresholdState
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
 
-    // YQMARK 软分叉 获得版本号具体细节
     LOCK(cs_main);
     int32_t nVersion = VERSIONBITS_TOP_BITS;
-
     for (int i = 0; i < (int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; i++) {
-
-
         ThresholdState state = VersionBitsState(pindexPrev, params, static_cast<Consensus::DeploymentPos>(i), versionbitscache);
-
         if (state == ThresholdState::LOCKED_IN || state == ThresholdState::STARTED) {
-
             nVersion |= VersionBitsMask(params, static_cast<Consensus::DeploymentPos>(i));
-
         }
     }
-
     return nVersion;
 }
 
@@ -1784,7 +1776,7 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consens
     // mainnet and testnet), so for simplicity, always leave P2SH
     // on except for the one violating block.
 
-    // YQMARK: BIP16
+    // YQMARK: BIP16   (如果是NULL或者不是相应的BIP16Exception区块才可以检查SCRIPT_VERIFY_P2SH标志)
     if (consensusparams.BIP16Exception.IsNull() || // no bip16 exception on this chain
         pindex->phashBlock == nullptr || // this is a new candidate block, eg from TestBlockValidity()
         *pindex->phashBlock != consensusparams.BIP16Exception) // this block isn't the historical exception
@@ -3413,6 +3405,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
                               ? pindexPrev->GetMedianTimePast()
                               : block.GetBlockTime();
 
+    // 检查交易的nLockTime是否已经过了
     // Check that all transactions are finalized
     for (const auto& tx : block.vtx) {
         if (!IsFinalTx(*tx, nHeight, nLockTimeCutoff)) {

@@ -394,6 +394,9 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     if (stack.size() < 1)
                         return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
 
+                    // 有符号4字节会有2038年问题
+                    // 无符号4字节会有2106年问题
+                    // 但是这里想要利用到 CTransaction 的nLockTime 所以需要用到有符号4字节
                     // Note that elsewhere numeric opcodes are limited to
                     // operands in the range -2**31+1 to 2**31-1, however it is
                     // legal for opcodes to produce results exceeding that

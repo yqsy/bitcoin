@@ -25,7 +25,6 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
     // 间隔周期(2周),除了2016个块后调整一次难度
     int nPeriod = Period(params);
 
-
     // 同意阀值,1916个块后同意
     int nThreshold = Threshold(params);
 

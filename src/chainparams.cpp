@@ -129,7 +129,6 @@ public:
         // pay to script hash
         consensus.BIP16Exception = uint256S("0x00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22");
 
-
         consensus.BIP34Height = 227931;
         consensus.BIP34Hash = uint256S("0x000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8");
 
@@ -150,10 +149,7 @@ public:
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = true;
 
-        // 5. bip9 规则同意比例?
         consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
-
-        // 两周期望产生的`块数  1. 每产生2016个块就会判断时间时间达到两周根据时间偏差调整难度 2. ? 猜测 bip9规则执行?
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
 
         // 6. bip9 所有规则预设
