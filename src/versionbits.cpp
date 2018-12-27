@@ -40,14 +40,20 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
     }
 
 
+//    for i in range(0, 2050): print('{0} {1}'.format(i, i - (i+1) % 2016 ))
+
+    // [0,2014] -1
+    // [2015,4030] 2015
+    // [4031,6046] 4031
+
     // A block's state is always the same as that of the first of its period, so it is computed based on a pindexPrev whose height equals a multiple of nPeriod - 1.
     //In [1]: for i in range(1,1024):
     //   ...:     print(i, i-1-(i)%144)
     // [1,143]=>-1 , [144,287]=>143, [288,431]=>287
+    // 上一个period的最后一个块
     if (pindexPrev != nullptr) {
         pindexPrev = pindexPrev->GetAncestor(pindexPrev->nHeight - ((pindexPrev->nHeight + 1) % nPeriod));
     }
-
 
     // Walk backwards in steps of nPeriod to find a pindexPrev whose information is known
     std::vector<const CBlockIndex*> vToCompute;
@@ -55,32 +61,51 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
 
     while (cache.count(pindexPrev) == 0) {
 
+        // 如果之前的区块是 0 ~ 2014 区块
+        // 就设置pindexPrev 的状态为 DEFINED 并break
         if (pindexPrev == nullptr) {
             // The genesis block is by definition defined.
             cache[pindexPrev] = ThresholdState::DEFINED;
             break;
         }
 
+        // 如果开始时间已经大于区间的第一个区块的之前11个时间中位数
         if (pindexPrev->GetMedianTimePast() < nTimeStart) {
             // Optimization: don't recompute down further, as we know every earlier block will be before the start time
+
+            // 定义 为 DEFINED
             cache[pindexPrev] = ThresholdState::DEFINED;
             break;
         }
+
+        // 待计算加入 pindexPrev
         vToCompute.push_back(pindexPrev);
+
+
+        // 之前的所有区间的最后一个区块都会被放入cache
         pindexPrev = pindexPrev->GetAncestor(pindexPrev->nHeight - nPeriod);
     }
 
     // At this point, cache[pindexPrev] is known
+
+    // 必须有 缓存中必须找的到
     assert(cache.count(pindexPrev));
+
+    // 从缓存中取得cache
     ThresholdState state = cache[pindexPrev];
 
     // Now walk forward and compute the state of descendants of pindexPrev
     while (!vToCompute.empty()) {
+
+        // 从头到尾
         ThresholdState stateNext = state;
         pindexPrev = vToCompute.back();
         vToCompute.pop_back();
 
+        // 状态机的切换
         switch (state) {
+
+             // 2016 个区块的最后一个区块是 DEFINED , 而时间到了,就把
             case ThresholdState::DEFINED: {
                 if (pindexPrev->GetMedianTimePast() >= nTimeTimeout) {
                     stateNext = ThresholdState::FAILED;
@@ -89,6 +114,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
                 }
                 break;
             }
+            // STARTED -> FAILED 或 LOCKED_IN
             case ThresholdState::STARTED: {
                 if (pindexPrev->GetMedianTimePast() >= nTimeTimeout) {
                     stateNext = ThresholdState::FAILED;
@@ -103,11 +129,14 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
                     }
                     pindexCount = pindexCount->pprev;
                 }
+
+                // 大于1916个块  才可以从 STARTED 转换为 LOCKED_IN
                 if (count >= nThreshold) {
                     stateNext = ThresholdState::LOCKED_IN;
                 }
                 break;
             }
+            // LOCKED_IN -> ACTIVE
             case ThresholdState::LOCKED_IN: {
                 // Always progresses into ACTIVE.
                 stateNext = ThresholdState::ACTIVE;
@@ -119,6 +148,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CBlockIndex*
                 break;
             }
         }
+
         cache[pindexPrev] = state = stateNext;
     }
 
