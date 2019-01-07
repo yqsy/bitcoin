@@ -20,14 +20,14 @@
 
 static const char DB_COIN = 'C';
 static const char DB_COINS = 'c';
-static const char DB_BLOCK_FILES = 'f'; // ok
-static const char DB_BLOCK_INDEX = 'b'; // ok
+static const char DB_BLOCK_FILES = 'f';
+static const char DB_BLOCK_INDEX = 'b';
 
 static const char DB_BEST_BLOCK = 'B';
 static const char DB_HEAD_BLOCKS = 'H';
 static const char DB_FLAG = 'F';
 static const char DB_REINDEX_FLAG = 'R';
-static const char DB_LAST_BLOCK = 'l'; // ok
+static const char DB_LAST_BLOCK = 'l';
 
 namespace {
 

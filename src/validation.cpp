@@ -60,28 +60,17 @@
 namespace {
     struct CBlockIndexWorkComparator
     {
-
-        // 1. set 模板不添加operator()时, 小的在前面
-        // 2. set 模板添加operator()时, a. 大于false: 小的在最前  b. 大于true: 大的在最前
         bool operator()(const CBlockIndex *pa, const CBlockIndex *pb) const {
-
-            // 比较
-
-            // 1. 工作量最小的在最前
             // First sort by most total work, ...
             if (pa->nChainWork > pb->nChainWork) return false;
             if (pa->nChainWork < pb->nChainWork) return true;
 
-
-            // 2. 序号大的在最前
             // ... then by earliest time received, ...
             if (pa->nSequenceId < pb->nSequenceId) return false;
             if (pa->nSequenceId > pb->nSequenceId) return true;
 
             // Use pointer address as tie breaker (should only happen with blocks
             // loaded from disk, as those all have id 0).
-
-            // 3. 指针大的在最前
             if (pa < pb) return false;
             if (pa > pb) return true;
 
@@ -121,7 +110,6 @@ private:
      * as good as our current tip or better. Entries may be failed, though, and pruning nodes may be
      * missing the data for the block.
      */
-     //
     std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
 
     /**
@@ -226,7 +214,7 @@ private:
 
 CCriticalSection cs_main;
 
-BlockMap& mapBlockIndex = g_chainstate.mapBlockIndex; // 定义
+BlockMap& mapBlockIndex = g_chainstate.mapBlockIndex;
 CChain& chainActive = g_chainstate.chainActive;
 CBlockIndex *pindexBestHeader = nullptr;
 CWaitableCriticalSection g_best_block_mutex;
@@ -1173,24 +1161,13 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
-    // 高度 / 累计减半产出的数量
-    // 547807(2018年10月29日) / 210000 == 2
     int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
-
     // Force block reward to zero when right shift is undefined.
-    // halvings 属于 [0,63]
     if (halvings >= 64)
         return 0;
 
-    // 单位是聪
     CAmount nSubsidy = 50 * COIN;
-
-    // 区块产生
-    // 10 min = 1 , 1 hour = 6 , 1 day = 144, 1 year = 52560 ,　4 year = 210240
     // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
-
-    // 5000000000 >> (高度 / 累计减半产出的数量)
-    //
     nSubsidy >>= halvings;
     return nSubsidy;
 }
@@ -1713,21 +1690,20 @@ void ThreadScriptCheck() {
 }
 
 // Protected by cs_main
-VersionBitsCache versionbitscache; // map [CBlockIndex*]ThresholdState
+VersionBitsCache versionbitscache;
 
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
-
     LOCK(cs_main);
     int32_t nVersion = VERSIONBITS_TOP_BITS;
+
     for (int i = 0; i < (int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; i++) {
         ThresholdState state = VersionBitsState(pindexPrev, params, static_cast<Consensus::DeploymentPos>(i), versionbitscache);
-
-        // 如果是 LOCKED_IN 或 STARTED 就开启bit位
         if (state == ThresholdState::LOCKED_IN || state == ThresholdState::STARTED) {
             nVersion |= VersionBitsMask(params, static_cast<Consensus::DeploymentPos>(i));
         }
     }
+
     return nVersion;
 }
 
@@ -1777,40 +1753,29 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consens
     // However, only one historical block violated the P2SH rules (on both
     // mainnet and testnet), so for simplicity, always leave P2SH
     // on except for the one violating block.
-
-    // YQMARK: BIP16   (如果是NULL或者不是相应的BIP16Exception区块才可以检查SCRIPT_VERIFY_P2SH标志)
     if (consensusparams.BIP16Exception.IsNull() || // no bip16 exception on this chain
         pindex->phashBlock == nullptr || // this is a new candidate block, eg from TestBlockValidity()
         *pindex->phashBlock != consensusparams.BIP16Exception) // this block isn't the historical exception
     {
-        // 不能是consensusparams.BIP16Exception 这个区块,  如果是就不加SCRIPT_VERIFY_P2SH
-        // 加上 SCRIPT_VERIFY_P2SH 的标签
         flags |= SCRIPT_VERIFY_P2SH;
     }
 
-
-    // YQMARK : BIP141, BIP143, and BIP147.
-    // 如果开启了witness  支持script隔离见证????
     // Enforce WITNESS rules whenever P2SH is in effect (and the segwit
     // deployment is defined).
     if (flags & SCRIPT_VERIFY_P2SH && IsScriptWitnessEnabled(consensusparams)) {
-
         flags |= SCRIPT_VERIFY_WITNESS;
     }
 
-    //  YQMARK: BIP66 开启 SCRIPT_VERIFY_DERSIG
     // Start enforcing the DERSIG (BIP66) rule
     if (pindex->nHeight >= consensusparams.BIP66Height) {
         flags |= SCRIPT_VERIFY_DERSIG;
     }
 
-    //  YQMARK: BIP65 SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY
     // Start enforcing CHECKLOCKTIMEVERIFY (BIP65) rule
     if (pindex->nHeight >= consensusparams.BIP65Height) {
         flags |= SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY;
     }
 
-    // YQMARK: BIP68 BIP112 BIP113
     // Start enforcing BIP68 (sequence locks) and BIP112 (CHECKSEQUENCEVERIFY) using versionbits logic.
     if (VersionBitsState(pindex->pprev, consensusparams, Consensus::DEPLOYMENT_CSV, versionbitscache) == ThresholdState::ACTIVE) {
         flags |= SCRIPT_VERIFY_CHECKSEQUENCEVERIFY;
@@ -1875,12 +1840,8 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
     if (block.GetHash() == chainparams.GetConsensus().hashGenesisBlock) {
-        if (!fJustCheck) {
-            CTxUndo txundo;
-            UpdateCoins(*(block.vtx[0]), view, txundo, pindex->nHeight);
+        if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
-        }
-
         return true;
     }
 
@@ -1986,27 +1947,14 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // post BIP34 before approximately height 486,000,000 and presumably will
     // be reset before it reaches block 1,983,702 and starts doing unnecessary
     // BIP30 checking again.
-
-    // YQMARK BIP34
     assert(pindex->pprev);
     CBlockIndex *pindexBIP34height = pindex->pprev->GetAncestor(chainparams.GetConsensus().BIP34Height);
     //Only continue to enforce if we're below BIP34 activation height or the block hash at that height doesn't correspond.
-
-    // 1. 在BIP34之前
-    // 2. BIP34区块的高度和哈系值不相符合
-    // 才可以强制BIP30
     fEnforceBIP30 = fEnforceBIP30 && (!pindexBIP34height || !(pindexBIP34height->GetBlockHash() == chainparams.GetConsensus().BIP34Hash));
 
     // TODO: Remove BIP30 checking from block height 1,983,702 on, once we have a
     // consensus change that ensures coinbases at those heights can not
     // duplicate earlier coinbases.
-
-    // fEnforceBIP30 或 2046年9月22日 之后?
-    // 如果缓存(或磁盘)中有这笔hash的输出,就返回错误
-    // 除非是nNonce 循环过来了, 然后又生成新的奖励交易...
-    // 不允许有重复输出
-    // 比特币主链不检查 因为 1.  bip34已经产生  2. bip34高度的区块哈希值符合 3. 高度不会超过198w
-    // 私钥链检查 因为 1. bip34没有产生 2. bip34产生了高度也不符合
     if (fEnforceBIP30 || pindex->nHeight >= BIP34_IMPLIES_BIP30_LIMIT) {
         for (const auto& tx : block.vtx) {
             for (size_t o = 0; o < tx->vout.size(); o++) {
@@ -2018,15 +1966,12 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
     }
 
-    //  BIP 68 112 113 开启后 开启 nLockTimeFlags 标志
-    //
     // Start enforcing BIP68 (sequence locks) and BIP112 (CHECKSEQUENCEVERIFY) using versionbits logic.
     int nLockTimeFlags = 0;
     if (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV, versionbitscache) == ThresholdState::ACTIVE) {
         nLockTimeFlags |= LOCKTIME_VERIFY_SEQUENCE;
     }
 
-    //
     // Get the script flags for this block
     unsigned int flags = GetBlockScriptFlags(pindex, chainparams.GetConsensus());
 
@@ -2041,14 +1986,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     CAmount nFees = 0;
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
-
-    // 增加空间
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
-
-    // 增加空间
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
-
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = *(block.vtx[i]);
@@ -2057,13 +1997,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
         if (!tx.IsCoinBase())
         {
-
-            // 检查input
             CAmount txfee = 0;
             if (!Consensus::CheckTxInputs(tx, state, view, pindex->nHeight, txfee)) {
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), FormatStateMessage(state));
             }
-            // 所有的奖励加起来看看是否在范围之内
             nFees += txfee;
             if (!MoneyRange(nFees)) {
                 return state.DoS(100, error("%s: accumulated fee in the block out of range.", __func__),
@@ -2073,8 +2010,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             // Check that transaction is BIP68 final
             // BIP68 lock checks (as opposed to nLockTime checks) must
             // be in ConnectBlock because they require the UTXO set
-
-            // 来源的所有的高度
             prevheights.resize(tx.vin.size());
             for (size_t j = 0; j < tx.vin.size(); j++) {
                 prevheights[j] = view.AccessCoin(tx.vin[j].prevout).nHeight;
@@ -2552,27 +2487,17 @@ CBlockIndex* CChainState::FindMostWorkChain() {
 
         // Find the best candidate header.
         {
-
             std::set<CBlockIndex*, CBlockIndexWorkComparator>::reverse_iterator it = setBlockIndexCandidates.rbegin();
             if (it == setBlockIndexCandidates.rend())
                 return nullptr;
-
-            // 1. 工作量最小的在最前 2. 序号大的在最前  3. 指针大的在最前
-
-            // 这里是找到 1. 工作量最大 2. 序号最先 3. 指针最小
             pindexNew = *it;
         }
 
         // Check whether all blocks on the path between the currently active chain and the candidate are valid.
         // Just going until the active chain is an optimization, as we know all blocks in it are valid already.
         CBlockIndex *pindexTest = pindexNew;
-
         bool fInvalidAncestor = false;
-
-
-        // 往前回溯到祖先,且没有放到内存中的CBlockIndex
         while (pindexTest && !chainActive.Contains(pindexTest)) {
-
             assert(pindexTest->nChainTx || pindexTest->nHeight == 0);
 
             // Pruned nodes may have entries in setBlockIndexCandidates for
@@ -2581,18 +2506,12 @@ CBlockIndex* CChainState::FindMostWorkChain() {
             // to a chain unless we have all the non-active-chain parent blocks.
             bool fFailedChain = pindexTest->nStatus & BLOCK_FAILED_MASK;
             bool fMissingData = !(pindexTest->nStatus & BLOCK_HAVE_DATA);
-
-
             if (fFailedChain || fMissingData) {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (fFailedChain && (pindexBestInvalid == nullptr || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
                     pindexBestInvalid = pindexNew;
-
-
                 CBlockIndex *pindexFailed = pindexNew;
                 // Remove the entire chain from the set.
-
-
                 while (pindexTest != pindexFailed) {
                     if (fFailedChain) {
                         pindexFailed->nStatus |= BLOCK_FAILED_CHILD;
@@ -2605,14 +2524,10 @@ CBlockIndex* CChainState::FindMostWorkChain() {
                     setBlockIndexCandidates.erase(pindexFailed);
                     pindexFailed = pindexFailed->pprev;
                 }
-
-
                 setBlockIndexCandidates.erase(pindexTest);
                 fInvalidAncestor = true;
                 break;
             }
-
-
             pindexTest = pindexTest->pprev;
         }
         if (!fInvalidAncestor)
@@ -3021,7 +2936,6 @@ CBlockIndex* CChainState::AddToBlockIndex(const CBlockHeader& block)
     if (pindexBestHeader == nullptr || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
 
-    //
     setDirtyBlockIndex.insert(pindexNew);
 
     return pindexNew;
@@ -3073,16 +2987,12 @@ void CChainState::ReceivedBlockTransactions(const CBlock& block, CBlockIndex* pi
         }
     }
 }
-// nAddSize: 区块大小+8 , nHeight: 区块的高度 , nTime: 区块的时间
+
 static bool FindBlockPos(CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false)
 {
     LOCK(cs_LastBlockFile);
 
-
-    // fKnown = false
     unsigned int nFile = fKnown ? pos.nFile : nLastBlockFile;
-
-
     if (vinfoBlockFile.size() <= nFile) {
         vinfoBlockFile.resize(nFile + 1);
     }
@@ -3182,15 +3092,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (block.fChecked)
         return true;
 
-
-    // 1. 检查头部 pow是否符合
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, consensusParams, fCheckPOW))
         return false;
-
-
-    // 2. 计算body交易的merkle root 跟头部的root对比, 是否符合
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
@@ -3199,8 +3104,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         if (block.hashMerkleRoot != hashMerkleRoot2)
             return state.DoS(100, false, REJECT_INVALID, "bad-txnmrklroot", true, "hashMerkleRoot mismatch");
 
-
-        // 有两笔交易的hash是一致的
         // Check for merkle tree malleability (CVE-2012-2459): repeating sequences
         // of transactions in a block without affecting the merkle root of a block,
         // while still invalidating it.
@@ -3214,39 +3117,28 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     // Note that witness malleability is checked in ContextualCheckBlock, so no
     // checks that use witness data may be performed here.
 
-    // 3. 交易判断 a. 空 b. weight 数量大于四百万(交易数超过一百万) c. 序列化后的大小大于一百万(没有隔离见证情况下) (字节数大于1M)
     // Size limits
-    if (block.vtx.empty() ||
-        block.vtx.size() * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT ||
-        ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
+    if (block.vtx.empty() || block.vtx.size() * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
 
-    // 4. 第一笔交易必须为coinbase
     // First transaction must be coinbase, the rest must not be
     if (block.vtx.empty() || !block.vtx[0]->IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "bad-cb-missing", false, "first tx is not coinbase");
-
-    // 5. 除开第一笔交易不能是coinbase
     for (unsigned int i = 1; i < block.vtx.size(); i++)
         if (block.vtx[i]->IsCoinBase())
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
-
-    // 6. 检查交易的in和out
     // Check transactions
     for (const auto& tx : block.vtx)
         if (!CheckTransaction(*tx, state, true))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
 
-    // 拿到检查签名的操作符号数量
     unsigned int nSigOps = 0;
     for (const auto& tx : block.vtx)
     {
         nSigOps += GetLegacySigOpCount(*tx);
     }
-
-    // 如果操作符大于2w
     if (nSigOps * WITNESS_SCALE_FACTOR > MAX_BLOCK_SIGOPS_COST)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-sigops", false, "out-of-bounds SigOpCount");
 
@@ -3275,13 +3167,7 @@ static int GetWitnessCommitmentIndex(const CBlock& block)
     int commitpos = -1;
     if (!block.vtx.empty()) {
         for (size_t o = 0; o < block.vtx[0]->vout.size(); o++) {
-            if (block.vtx[0]->vout[o].scriptPubKey.size() >= 38 &&
-                block.vtx[0]->vout[o].scriptPubKey[0] == OP_RETURN &&
-                block.vtx[0]->vout[o].scriptPubKey[1] == 0x24 &&
-                block.vtx[0]->vout[o].scriptPubKey[2] == 0xaa &&
-                block.vtx[0]->vout[o].scriptPubKey[3] == 0x21 &&
-                block.vtx[0]->vout[o].scriptPubKey[4] == 0xa9 &&
-                block.vtx[0]->vout[o].scriptPubKey[5] == 0xed) {
+            if (block.vtx[0]->vout[o].scriptPubKey.size() >= 38 && block.vtx[0]->vout[o].scriptPubKey[0] == OP_RETURN && block.vtx[0]->vout[o].scriptPubKey[1] == 0x24 && block.vtx[0]->vout[o].scriptPubKey[2] == 0xaa && block.vtx[0]->vout[o].scriptPubKey[3] == 0x21 && block.vtx[0]->vout[o].scriptPubKey[4] == 0xa9 && block.vtx[0]->vout[o].scriptPubKey[5] == 0xed) {
                 commitpos = o;
             }
         }
@@ -3315,9 +3201,9 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
             out.scriptPubKey.resize(38);
             out.scriptPubKey[0] = OP_RETURN;
             out.scriptPubKey[1] = 0x24;
-            out.scriptPubKey[2] = 0xaa; // OP_HASH256
+            out.scriptPubKey[2] = 0xaa;
             out.scriptPubKey[3] = 0x21;
-            out.scriptPubKey[4] = 0xa9; // OP_HASH160
+            out.scriptPubKey[4] = 0xa9;
             out.scriptPubKey[5] = 0xed;
             memcpy(&out.scriptPubKey[6], witnessroot.begin(), 32);
             commitment = std::vector<unsigned char>(out.scriptPubKey.begin(), out.scriptPubKey.end());
@@ -3344,13 +3230,11 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
     assert(pindexPrev != nullptr);
     const int nHeight = pindexPrev->nHeight + 1;
 
-    // 1. 难度的 上下文判断
     // Check proof of work
     const Consensus::Params& consensusParams = params.GetConsensus();
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
 
-    // 2. 检查点的判断
     // Check against checkpoints
     if (fCheckpointsEnabled) {
         // Don't accept any forks from the main chain prior to last checkpoint.
@@ -3361,17 +3245,14 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationSta
             return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight), REJECT_CHECKPOINT, "bad-fork-prior-to-checkpoint");
     }
 
-    // 3. 区块的时间戳不能小于之前11个区块时间戳的大小中位数
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
         return state.Invalid(false, REJECT_INVALID, "time-too-old", "block's timestamp is too early");
 
-    // 4. timestamp 不能超过2个小时
     // Check timestamp
     if (block.GetBlockTime() > nAdjustedTime + MAX_FUTURE_BLOCK_TIME)
         return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
 
-    // 5. BIP65 66 34 以及相应的version判断
     // Reject outdated version blocks when 95% (75% on testnet) of the network has upgraded:
     // check for version 2, 3 and 4 upgrades
     if((block.nVersion < 2 && nHeight >= consensusParams.BIP34Height) ||
@@ -3399,13 +3280,10 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
         nLockTimeFlags |= LOCKTIME_MEDIAN_TIME_PAST;
     }
 
-    // 如果激活了, 时间截止字段选取之前11个区块的时间中位数
-    // 如果没激活, 时间截止字段选取新区块的时间戳
     int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST)
                               ? pindexPrev->GetMedianTimePast()
                               : block.GetBlockTime();
 
-    // 检查交易的nLockTime是否已经过了
     // Check that all transactions are finalized
     for (const auto& tx : block.vtx) {
         if (!IsFinalTx(*tx, nHeight, nLockTimeCutoff)) {
@@ -3413,8 +3291,6 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
         }
     }
 
-
-    // BIP34 高度开始, 第0下标交易的in[0]必须是nHeight (区块高度)
     // Enforce rule that the coinbase starts with serialized block height
     if (nHeight >= consensusParams.BIP34Height)
     {
@@ -3479,19 +3355,10 @@ bool CChainState::AcceptBlockHeader(const CBlockHeader& block, CValidationState&
 {
     AssertLockHeld(cs_main);
     // Check for duplicate
-
-    // 新的区块的hash
     uint256 hash = block.GetHash();
-
-    // 在内存池中寻找有没有
     BlockMap::iterator miSelf = mapBlockIndex.find(hash);
-
     CBlockIndex *pindex = nullptr;
-
-    // 不是创世区块时才做处理
     if (hash != chainparams.GetConsensus().hashGenesisBlock) {
-
-        // 如果寻找到了
         if (miSelf != mapBlockIndex.end()) {
             // Block header is already known.
             pindex = miSelf->second;
@@ -3502,40 +3369,25 @@ bool CChainState::AcceptBlockHeader(const CBlockHeader& block, CValidationState&
             return true;
         }
 
-        // 没有找到时检查区块头部 (po2)
         if (!CheckBlockHeader(block, state, chainparams.GetConsensus()))
             return error("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
 
         // Get prev block index
         CBlockIndex* pindexPrev = nullptr;
-
-        // 如果父区块没有找到,那么抛出错误
         BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.end())
             return state.DoS(10, error("%s: prev block not found", __func__), 0, "prev-blk-not-found");
-
-
-        // 如果之前的区块的是failed的,那么抛出错误
         pindexPrev = (*mi).second;
         if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
             return state.DoS(100, error("%s: prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
-
-
-        // 上下文检查
         if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev, GetAdjustedTime()))
             return error("%s: Consensus::ContextualCheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
-
-
 
         // If the previous block index isn't valid, determine if it descends from any block which
         // has been found invalid (m_failed_blocks), then mark pindexPrev and any blocks
         // between them as failed.
         if (!pindexPrev->IsValid(BLOCK_VALID_SCRIPTS)) {
-
-
             for (const CBlockIndex* failedit : m_failed_blocks) {
-
-                // 之前的区块的祖先中有失败的区块的一员
                 if (pindexPrev->GetAncestor(failedit->nHeight) == failedit) {
                     assert(failedit->nStatus & BLOCK_FAILED_VALID);
                     CBlockIndex* invalid_walk = pindexPrev;
@@ -3549,7 +3401,7 @@ bool CChainState::AcceptBlockHeader(const CBlockHeader& block, CValidationState&
             }
         }
     }
-    if (pindex == nullptr) // 如果这个区块没有在内存池中找到,就添加到内存池中
+    if (pindex == nullptr)
         pindex = AddToBlockIndex(block);
 
     if (ppindex)
@@ -3583,21 +3435,15 @@ bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidatio
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
 static CDiskBlockPos SaveBlockToDisk(const CBlock& block, int nHeight, const CChainParams& chainparams, const CDiskBlockPos* dbp) {
-
-    // 得到写入磁盘的区块的大小
     unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
-
     CDiskBlockPos blockPos;
     if (dbp != nullptr)
         blockPos = *dbp;
-
-    // 获得区块在磁盘上存储的地址
     if (!FindBlockPos(blockPos, nBlockSize+8, nHeight, block.GetBlockTime(), dbp != nullptr)) {
         error("%s: FindBlockPos failed", __func__);
         return CDiskBlockPos();
     }
-
-    if (dbp == nullptr) { // 写到磁盘上
+    if (dbp == nullptr) {
         if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart())) {
             AbortNode("Failed to write block");
             return CDiskBlockPos();
@@ -3623,20 +3469,13 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     // Try to process all requested blocks that we don't have, but only
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
-
-
-    // a. nStatus 有 BLOCK_HAVE_DATA
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
-
-    // b. 接受的区块比当前的最顶端的块的算里累计还大
     bool fHasMoreOrSameWork = (chainActive.Tip() ? pindex->nChainWork >= chainActive.Tip()->nChainWork : true);
     // Blocks that are too out-of-order needlessly limit the effectiveness of
     // pruning, because pruning will not delete block files that contain any
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-
-    // c. 大于当前的区块高度超过288个块
     bool fTooFarAhead = (pindex->nHeight > int(chainActive.Height() + MIN_BLOCKS_TO_KEEP));
 
     // TODO: Decouple this function from the block download logic by removing fRequested
@@ -3647,8 +3486,6 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     // TODO: deal better with return value and error conditions for duplicate
     // and unrequested blocks.
     if (fAlreadyHave) return true;
-
-    // 默认是true 不走
     if (!fRequested) {  // If we didn't ask for it:
         if (pindex->nTx != 0) return true;    // This is a previously-processed block that was pruned
         if (!fHasMoreOrSameWork) return true; // Don't process less-work chains
@@ -3672,22 +3509,18 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
 
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
-
-    // 没有下载完,并且是内存中最新的区块的下一个
     if (!IsInitialBlockDownload() && chainActive.Tip() == pindex->pprev)
         GetMainSignals().NewPoWValidBlock(pindex, pblock);
 
     // Write block to history file
     if (fNewBlock) *fNewBlock = true;
     try {
-
         CDiskBlockPos blockPos = SaveBlockToDisk(block, pindex->nHeight, chainparams, dbp);
         if (blockPos.IsNull()) {
             state.Error(strprintf("%s: Failed to find position to write new block to disk", __func__));
             return false;
         }
         ReceivedBlockTransactions(block, pindex, blockPos, chainparams.GetConsensus());
-
     } catch (const std::runtime_error& e) {
         return AbortNode(state, std::string("System error: ") + e.what());
     }
@@ -3701,8 +3534,6 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
 
 bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock> pblock, bool fForceProcessing, bool *fNewBlock)
 {
-
-    // 1. 参数 2. 出的新块 3. true 4. nullptr
     AssertLockNotHeld(cs_main);
 
     {
@@ -4010,10 +3841,7 @@ bool CChainState::LoadBlockIndex(const Consensus::Params& consensus_params, CBlo
     for (const std::pair<int, CBlockIndex*>& item : vSortedByHeight)
     {
         CBlockIndex* pindex = item.second;
-
-        // YQMARK 计算  nChainWork = 上一个区块的nChainWork + 这个区块的计算得到
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
-
         pindex->nTimeMax = (pindex->pprev ? std::max(pindex->pprev->nTimeMax, pindex->nTime) : pindex->nTime);
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
