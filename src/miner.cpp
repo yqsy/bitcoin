@@ -98,8 +98,6 @@ void BlockAssembler::resetBlock()
 
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool fMineWitnessTx)
 {
-    // YQMARK 创建新的区块 塞入交易
-    // 1. 获得时间(微秒)
     int64_t nTimeStart = GetTimeMicros();
 
     resetBlock();
@@ -110,29 +108,19 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         return nullptr;
     pblock = &pblocktemplate->block; // pointer for convenience
 
-
-    // 2. 初始化 A. 交易数组压入一笔空的交易 B. 费用 C. 见证花费
     // Add dummy coinbase tx as first transaction
     pblock->vtx.emplace_back();
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
 
     LOCK2(cs_main, mempool.cs);
-
-    // 3. 获得上一区块的索引
     CBlockIndex* pindexPrev = chainActive.Tip();
     assert(pindexPrev != nullptr);
-
-    // 4. 计算当前区块的高度
     nHeight = pindexPrev->nHeight + 1;
 
-    // 5. YQMARK CBlockHeader重要: (软分叉)
     pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
-
-    // 6. 是否需要挖矿 ,
     if (chainparams.MineBlocksOnDemand())
         pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
 
@@ -154,8 +142,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // transaction (which in most cases can be a no-op).
     fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
 
-
-    // YQMARK !!! 我去 !!添加交易到区块的代码躲在这个角落里
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
     addPackageTxs(nPackagesSelected, nDescendantsUpdated);
@@ -165,40 +151,23 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     nLastBlockTx = nBlockTx;
     nLastBlockWeight = nBlockWeight;
 
-    // 7. 创建奖励的交易
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
-
-    // vin[0] 设置为null
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
-
-    // vout[0] 的锁定脚本为 函数外部传入的锁定脚本 , 输出数量为动态计算的
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-
-    // vin[0] 的见证脚本输入 高度 + OP_0
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
-
-    // 赋值到vtx[0]
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
-
-
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-
-    // 费用为负数?
     pblocktemplate->vTxFees[0] = -nFees;
 
     LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
-
-    // 填充头部
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
     UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-
-    // YQMARK CBlockHeader重要: (本次出块需要到达的难度)
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
@@ -452,8 +421,6 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         SortForBlock(ancestors, sortedEntries);
 
         for (size_t i=0; i<sortedEntries.size(); ++i) {
-
-
             AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);

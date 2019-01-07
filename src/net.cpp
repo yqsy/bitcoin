@@ -747,9 +747,6 @@ bool CNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& complete
     nRecvBytes += nBytes;
     while (nBytes > 0) {
 
-        // 消息队列为空或者最先进去的元素已经完成了就放入新的message
-
-        // YQMARK: 读取node消息时, pchMessageStart 取CMainParam时初始化的值?
         // get current incomplete message, or create a new one
         if (vRecvMsg.empty() ||
             vRecvMsg.back().complete())
@@ -758,8 +755,6 @@ bool CNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& complete
         CNetMessage& msg = vRecvMsg.back();
 
         // absorb network data
-
-        // 读取header再读取body
         int handled;
         if (!msg.in_data)
             handled = msg.readHeader(pch, nBytes);
@@ -1286,13 +1281,10 @@ void CConnman::ThreadSocketHandler()
                 hSocketMax = std::max(hSocketMax, pnode->hSocket);
                 have_fds = true;
 
-                // 发信号
                 if (select_send) {
                     FD_SET(pnode->hSocket, &fdsetSend);
                     continue;
                 }
-
-                // 收信号
                 if (select_recv) {
                     FD_SET(pnode->hSocket, &fdsetRecv);
                 }
@@ -1361,8 +1353,6 @@ void CConnman::ThreadSocketHandler()
             }
             if (recvSet || errorSet)
             {
-
-                // 读取缓冲区为65536
                 // typical socket buffer is 8K-64K
                 char pchBuf[0x10000];
                 int nBytes = 0;
@@ -1377,33 +1367,21 @@ void CConnman::ThreadSocketHandler()
                     bool notify = false;
                     if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
                         pnode->CloseSocketDisconnect();
-
-
                     RecordBytesRecv(nBytes);
-
-
-                    // 如果读到了消息
                     if (notify) {
                         size_t nSizeAdded = 0;
                         auto it(pnode->vRecvMsg.begin());
-
                         for (; it != pnode->vRecvMsg.end(); ++it) {
                             if (!it->complete())
                                 break;
                             nSizeAdded += it->vRecv.size() + CMessageHeader::HEADER_SIZE;
                         }
-
                         {
                             LOCK(pnode->cs_vProcessMsg);
-
                             pnode->vProcessMsg.splice(pnode->vProcessMsg.end(), pnode->vRecvMsg, pnode->vRecvMsg.begin(), it);
-
                             pnode->nProcessQueueSize += nSizeAdded;
-
                             pnode->fPauseRecv = pnode->nProcessQueueSize > nReceiveFloodSize;
                         }
-
-                        // YQMARK: 信号量通知
                         WakeMessageHandler();
                     }
                 }
@@ -1659,7 +1637,7 @@ void CConnman::ThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
             ServiceFlags requiredServiceBits = GetDesirableServiceFlags(NODE_NONE);
-            std::string host = strprintf("x%x.%s", requiredServiceBits, seed); // x9.vm1.com
+            std::string host = strprintf("x%x.%s", requiredServiceBits, seed);
             CNetAddr resolveSource;
             if (!resolveSource.SetInternal(host)) {
                 continue;
@@ -1672,7 +1650,7 @@ void CConnman::ThreadDNSAddressSeed()
                     int nOneDay = 24*3600;
                     CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()), requiredServiceBits);
                     addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
-                    vAdd.push_back(addr); //
+                    vAdd.push_back(addr);
                     found++;
                 }
                 addrman.Add(vAdd, resolveSource);
@@ -1793,7 +1771,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
     int64_t nNextFeeler = PoissonNextSend(nStart*1000*1000, FEELER_INTERVAL);
     while (!interruptNet)
     {
-        ProcessOneShot(); // YQMARK: 命令行连接 ProcessOneShot！
+        ProcessOneShot();
 
         if (!interruptNet.sleep_for(std::chrono::milliseconds(500)))
             return;
@@ -1802,7 +1780,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
         if (interruptNet)
             return;
 
-        // Add seed nodes if DNS seeds are all down (an infrastructure attack?). // 超过60s 就尝试连接ipv6
+        // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
         if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
             static bool done = false;
             if (!done) {
@@ -2275,8 +2253,6 @@ bool CConnman::InitBinds(const std::vector<CService>& binds, const std::vector<C
         fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
     }
     if (binds.empty() && whiteBinds.empty()) {
-
-        // YQMARK: 监听默认端口
         struct in_addr inaddr_any;
         inaddr_any.s_addr = INADDR_ANY;
         struct in6_addr inaddr6_any = IN6ADDR_ANY_INIT;
@@ -2301,7 +2277,6 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
         nMaxOutboundCycleStartTime = 0;
     }
 
-    // 监听
     if (fListen && !InitBinds(connOptions.vBinds, connOptions.vWhiteBinds)) {
         if (clientInterface) {
             clientInterface->ThreadSafeMessageBox(
@@ -2520,7 +2495,7 @@ void CConnman::MarkAddressGood(const CAddress& addr)
 
 void CConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
 {
-     addrman.Add(vAddr, addrFrom, nTimePenalty);
+    addrman.Add(vAddr, addrFrom, nTimePenalty);
 }
 
 std::vector<CAddress> CConnman::GetAddresses()

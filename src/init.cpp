@@ -636,27 +636,23 @@ static void ThreadImport(std::vector<fs::path> vImportFiles)
     RenameThread("bitcoin-loadblk");
     ScheduleBatchPriority();
 
-    { // 根据blk文件的数据刷新leveldb blocks/index/*
+    {
     CImportingNow imp;
 
     // -reindex
     if (fReindex) {
         int nFile = 0;
         while (true) {
-
             CDiskBlockPos pos(nFile, 0);
             if (!fs::exists(GetBlockPosFilename(pos, "blk")))
                 break; // No block files left to reindex
-
             FILE *file = OpenBlockFile(pos, true);
             if (!file)
                 break; // This error is logged in OpenBlockFile
             LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
-
             LoadExternalBlockFile(chainparams, file, &pos);
             nFile++;
         }
-
         pblocktree->WriteReindexing(false);
         fReindex = false;
         LogPrintf("Reindexing finished\n");

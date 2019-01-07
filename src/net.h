@@ -137,7 +137,7 @@ public:
         unsigned int nReceiveFloodSize = 0;
         uint64_t nMaxOutboundTimeframe = 0;
         uint64_t nMaxOutboundLimit = 0;
-        std::vector<std::string> vSeedNodes; // 命令行输入的ipv4 seeds
+        std::vector<std::string> vSeedNodes;
         std::vector<CSubNet> vWhitelistedRange;
         std::vector<CService> vBinds, vWhiteBinds;
         bool m_use_addrman_outgoing = true;
@@ -391,22 +391,17 @@ private:
     unsigned int nSendBufferMaxSize;
     unsigned int nReceiveFloodSize;
 
-
-    // YQMARK: 监听套接字
     std::vector<ListenSocket> vhListenSocket;
-
     std::atomic<bool> fNetworkActive;
     banmap_t setBanned;
     CCriticalSection cs_setBanned;
     bool setBannedIsDirty;
     bool fAddressesInitialized;
-    CAddrMan addrman;  // YQMARK: 存放seeds节点
-    std::deque<std::string> vOneShots; // 命令行存放seeds的节点
+    CAddrMan addrman;
+    std::deque<std::string> vOneShots;
     CCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes GUARDED_BY(cs_vAddedNodes);
     CCriticalSection cs_vAddedNodes;
-
-    // YQMARK: 所有的节点
     std::vector<CNode*> vNodes;
     std::list<CNode*> vNodesDisconnected;
     mutable CCriticalSection cs_vNodes;
@@ -536,10 +531,7 @@ struct LocalServiceInfo {
 };
 
 extern CCriticalSection cs_mapLocalHost;
-
-// YQMARK: 存储全局的监听套接字对象
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
-
 typedef std::map<std::string, uint64_t> mapMsgCmdSize; //command, total bytes
 
 class CNodeStats
@@ -584,13 +576,8 @@ private:
 public:
     bool in_data;                   // parsing header (false) or data (true)
 
-    // 包头的缓冲
     CDataStream hdrbuf;             // partially received header
-
-    // 包头
     CMessageHeader hdr;             // complete header
-
-    // 当前
     unsigned int nHdrPos;
 
     CDataStream vRecv;              // received message data
@@ -643,12 +630,7 @@ public:
     CCriticalSection cs_vRecv;
 
     CCriticalSection cs_vProcessMsg;
-
-
-    // YQMARK: 从node收到消息后,完整的放到这里
     std::list<CNetMessage> vProcessMsg;
-
-    // (BODY + HEADRE ) * 消息数量
     size_t nProcessQueueSize;
 
     CCriticalSection cs_sendProcessing;
