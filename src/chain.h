@@ -52,34 +52,34 @@ public:
         READWRITE(VARINT(nTimeLast));
     }
 
-     void SetNull() {
-         nBlocks = 0;
-         nSize = 0;
-         nUndoSize = 0;
-         nHeightFirst = 0;
-         nHeightLast = 0;
-         nTimeFirst = 0;
-         nTimeLast = 0;
-     }
+    void SetNull() {
+        nBlocks = 0;
+        nSize = 0;
+        nUndoSize = 0;
+        nHeightFirst = 0;
+        nHeightLast = 0;
+        nTimeFirst = 0;
+        nTimeLast = 0;
+    }
 
-     CBlockFileInfo() {
-         SetNull();
-     }
+    CBlockFileInfo() {
+        SetNull();
+    }
 
-     std::string ToString() const;
+    std::string ToString() const;
 
-     /** update statistics (does not update nSize) */
-     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
-         if (nBlocks==0 || nHeightFirst > nHeightIn)
-             nHeightFirst = nHeightIn;
-         if (nBlocks==0 || nTimeFirst > nTimeIn)
-             nTimeFirst = nTimeIn;
-         nBlocks++;
-         if (nHeightIn > nHeightLast)
-             nHeightLast = nHeightIn;
-         if (nTimeIn > nTimeLast)
-             nTimeLast = nTimeIn;
-     }
+    /** update statistics (does not update nSize) */
+    void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
+        if (nBlocks==0 || nHeightFirst > nHeightIn)
+            nHeightFirst = nHeightIn;
+        if (nBlocks==0 || nTimeFirst > nTimeIn)
+            nTimeFirst = nTimeIn;
+        nBlocks++;
+        if (nHeightIn > nHeightLast)
+            nHeightLast = nHeightIn;
+        if (nTimeIn > nTimeLast)
+            nTimeLast = nTimeIn;
+    }
 };
 
 struct CDiskBlockPos
@@ -124,32 +124,32 @@ struct CDiskBlockPos
 
 enum BlockStatus: uint32_t {
     //! Unused.
-    BLOCK_VALID_UNKNOWN      =    0,
+            BLOCK_VALID_UNKNOWN      =    0,
 
     //! Parsed, version ok, hash satisfies claimed PoW, 1 <= vtx count <= max, timestamp not in future
-    BLOCK_VALID_HEADER       =    1,
+            BLOCK_VALID_HEADER       =    1,
 
     //! All parent headers found, difficulty matches, timestamp >= median previous, checkpoint. Implies all parents
     //! are also at least TREE.
-    BLOCK_VALID_TREE         =    2,
+            BLOCK_VALID_TREE         =    2,
 
     /**
      * Only first tx is coinbase, 2 <= coinbase input script length <= 100, transactions valid, no duplicate txids,
      * sigops, size, merkle root. Implies all parents are at least TREE but not necessarily TRANSACTIONS. When all
      * parent blocks also have TRANSACTIONS, CBlockIndex::nChainTx will be set.
      */
-    BLOCK_VALID_TRANSACTIONS =    3,
+            BLOCK_VALID_TRANSACTIONS =    3,
 
     //! Outputs do not overspend inputs, no double spends, coinbase output ok, no immature coinbase spends, BIP30.
     //! Implies all parents are also at least CHAIN.
-    BLOCK_VALID_CHAIN        =    4,
+            BLOCK_VALID_CHAIN        =    4,
 
     //! Scripts & signatures ok. Implies all parents are also at least SCRIPTS.
-    BLOCK_VALID_SCRIPTS      =    5,
+            BLOCK_VALID_SCRIPTS      =    5,
 
     //! All validity bits.
-    BLOCK_VALID_MASK         =   BLOCK_VALID_HEADER | BLOCK_VALID_TREE | BLOCK_VALID_TRANSACTIONS |
-                                 BLOCK_VALID_CHAIN | BLOCK_VALID_SCRIPTS,
+            BLOCK_VALID_MASK         =   BLOCK_VALID_HEADER | BLOCK_VALID_TREE | BLOCK_VALID_TRANSACTIONS |
+                                         BLOCK_VALID_CHAIN | BLOCK_VALID_SCRIPTS,
 
     BLOCK_HAVE_DATA          =    8, //!< full block available in blk*.dat
     BLOCK_HAVE_UNDO          =   16, //!< undo data available in rev*.dat
@@ -207,9 +207,7 @@ public:
     uint32_t nStatus;
 
     //! block header
-    // block头的version, 用位图来验证该版本是否包含某种功能
     int32_t nVersion;
-
     uint256 hashMerkleRoot;
     uint32_t nTime;
     uint32_t nBits;
@@ -308,7 +306,6 @@ public:
 
     static constexpr int nMedianTimeSpan = 11;
 
-
     int64_t GetMedianTimePast() const
     {
         int64_t pmedian[nMedianTimeSpan];
@@ -316,7 +313,6 @@ public:
         int64_t* pend = &pmedian[nMedianTimeSpan];
 
         const CBlockIndex* pindex = this;
-
         for (int i = 0; i < nMedianTimeSpan && pindex; i++, pindex = pindex->pprev)
             *(--pbegin) = pindex->GetBlockTime();
 
@@ -327,9 +323,9 @@ public:
     std::string ToString() const
     {
         return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
-            pprev, nHeight,
-            hashMerkleRoot.ToString(),
-            GetBlockHash().ToString());
+                         pprev, nHeight,
+                         hashMerkleRoot.ToString(),
+                         GetBlockHash().ToString());
     }
 
     //! Check whether this block index entry is valid up to the passed validity level.
@@ -429,8 +425,8 @@ public:
         std::string str = "CDiskBlockIndex(";
         str += CBlockIndex::ToString();
         str += strprintf("\n                hashBlock=%s, hashPrev=%s)",
-            GetBlockHash().ToString(),
-            hashPrev.ToString());
+                         GetBlockHash().ToString(),
+                         hashPrev.ToString());
         return str;
     }
 };

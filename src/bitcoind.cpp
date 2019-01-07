@@ -137,7 +137,7 @@ static bool AppInit(int argc, char* argv[])
         if (gArgs.GetBoolArg("-daemon", false))
         {
 #if HAVE_DECL_DAEMON
-#if defined(MAC_OSX)
+            #if defined(MAC_OSX)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
@@ -183,7 +183,6 @@ static bool AppInit(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-
     SetupEnvironment();
 
     // Connect bitcoind signal handlers
