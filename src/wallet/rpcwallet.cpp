@@ -3881,8 +3881,6 @@ static UniValue bumpfee(const JSONRPCRequest& request)
 
 UniValue generate(const JSONRPCRequest& request)
 {
-
-    // 得到发起generate的用户的钱包
     std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
     CWallet* const pwallet = wallet.get();
 
@@ -3890,7 +3888,6 @@ UniValue generate(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
-
 
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
         throw std::runtime_error(
@@ -3909,12 +3906,10 @@ UniValue generate(const JSONRPCRequest& request)
 
     int num_generate = request.params[0].get_int();
     uint64_t max_tries = 1000000;
-
     if (!request.params[1].isNull()) {
         max_tries = request.params[1].get_int();
     }
 
-    // 钱包对象产生一个coinbase 锁定
     std::shared_ptr<CReserveScript> coinbase_script;
     pwallet->GetScriptForMining(coinbase_script);
 
@@ -3928,7 +3923,6 @@ UniValue generate(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available");
     }
 
-    // 生成区块
     return generateBlocks(coinbase_script, num_generate, max_tries, true);
 }
 

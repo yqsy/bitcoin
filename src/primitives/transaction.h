@@ -66,29 +66,20 @@ public:
     uint32_t nSequence;
     CScriptWitness scriptWitness; //! Only serialized through CTransaction
 
-
-    // 无效
     /* Setting nSequence to this value for every input in a transaction
      * disables nLockTime. */
     static const uint32_t SEQUENCE_FINAL = 0xffffffff;
 
-
-    // 如果设置了,那么就不是相对时间锁定了
     /* Below flags apply in the context of BIP 68*/
     /* If this flag set, CTxIn::nSequence is NOT interpreted as a
      * relative lock-time. */
     static const uint32_t SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31);
 
-
-    // 相对时间规则,如果设置了就把512秒作为基本单位
-    // 否则区块粒度1作为基本单位
     /* If CTxIn::nSequence encodes a relative lock-time and this flag
      * is set, the relative lock-time has units of 512 seconds,
      * otherwise it specifies blocks with a granularity of 1. */
     static const uint32_t SEQUENCE_LOCKTIME_TYPE_FLAG = (1 << 22);
 
-
-    // 如果nSequence表示了相对时间锁, 那么 这个字段用来扩充时间锁
     /* If CTxIn::nSequence encodes a relative lock-time, this mask is
      * applied to extract that lock-time from the sequence field. */
     static const uint32_t SEQUENCE_LOCKTIME_MASK = 0x0000ffff;
@@ -202,16 +193,6 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  */
-
-
-//vin 0 vout 0 flag 0
-//
-//vin 0 vout 1 => flag 1  (又读vin)  这个逻辑有问题的!!!
-//
-//vin 0 vout 0 隔离见证 flag 1
-//
-//vin 0 vout 1 隔离见证 flag 1
-
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -222,10 +203,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     tx.vout.clear();
     /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
     s >> tx.vin;
-
-    // 两个条件(真): 1. vin长度为0  2. stream支持隔离见证
-    // (假): 1. vin长度>0  2.  stream禁止隔离见证
-
     if (tx.vin.size() == 0 && fAllowWitness) {
         /* We read a dummy or an empty vin. */
         s >> flags;
@@ -237,7 +214,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         /* We read a non-empty vin. Assume a normal vout follows. */
         s >> tx.vout;
     }
-
     if ((flags & 1) && fAllowWitness) {
         /* The witness flag is present, and we support witnesses. */
         flags ^= 1;
@@ -254,8 +230,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 
 template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
-
-    // 如果stream的版本支持隔离见证
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
 
     s << tx.nVersion;
@@ -270,13 +244,11 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     if (flags) {
         /* Use extended format in case witnesses are to be serialized. */
         std::vector<CTxIn> vinDummy;
-        s << vinDummy; // unsigned char 0x00  用到了vector 序列化, 不过写入的还是 0x00
-        s << flags; // 隔离见证: unsigned char 0x01  可扩展
+        s << vinDummy;
+        s << flags;
     }
-
     s << tx.vin;
     s << tx.vout;
-
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;
@@ -321,8 +293,6 @@ private:
 
 public:
     /** Construct a CTransaction that qualifies as IsNull() */
-
-
     CTransaction();
 
     /** Convert a CMutableTransaction into a CTransaction. */
@@ -377,8 +347,6 @@ public:
 
     bool HasWitness() const
     {
-        // 如果有一笔in的scriptWitness不为空, 则表示为是隔离见证
-
         for (size_t i = 0; i < vin.size(); i++) {
             if (!vin[i].scriptWitness.IsNull()) {
                 return true;

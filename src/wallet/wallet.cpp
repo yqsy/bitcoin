@@ -3725,26 +3725,14 @@ void CWallet::MarkReserveKeysAsUsed(int64_t keypool_id)
     }
 }
 
-
 void CWallet::GetScriptForMining(std::shared_ptr<CReserveScript> &script)
 {
-
-    // 1. CReserveKey -> 通过CReserveKey生成一个公钥
     std::shared_ptr<CReserveKey> rKey = std::make_shared<CReserveKey>(this);
-
     CPubKey pubkey;
-
     if (!rKey->GetReservedKey(pubkey))
         return;
 
-    // 2. CReserveKey 输出到接收参数 CReserveScript
     script = rKey;
-
-    // 3. 给CReserveScript 打coinbase锁定脚本
-
-    // out
-    // OP_CHECKSIG
-    // <pubKey>
     script->reserveScript = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
 }
 

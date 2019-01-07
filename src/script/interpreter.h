@@ -36,7 +36,6 @@ enum
 {
     SCRIPT_VERIFY_NONE      = 0,
 
-    // 开启 P2SH, 不能是BIP16Exception
     // Evaluate P2SH subscripts (BIP16).
     SCRIPT_VERIFY_P2SH      = (1U << 0),
 
@@ -93,8 +92,6 @@ enum
     // See BIP112 for details
     SCRIPT_VERIFY_CHECKSEQUENCEVERIFY = (1U << 10),
 
-
-    // 支持隔离见证
     // Support segregated witness
     //
     SCRIPT_VERIFY_WITNESS = (1U << 11),

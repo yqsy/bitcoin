@@ -18,17 +18,12 @@ bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)
         return true;
-
-
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
-
     for (const auto& txin : tx.vin) {
         if (!(txin.nSequence == CTxIn::SEQUENCE_FINAL))
             return false;
     }
-
-
     return true;
 }
 
@@ -96,12 +91,8 @@ std::pair<int, int64_t> CalculateSequenceLocks(const CTransaction &tx, int flags
 
 bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> lockPair)
 {
-
-    // 最小高度   最小时间  解锁?
     assert(block.pprev);
     int64_t nBlockTime = block.pprev->GetMedianTimePast();
-
-    // 高度,时间 小于最小高度/时间
     if (lockPair.first >= block.nHeight || lockPair.second >= nBlockTime)
         return false;
 
@@ -110,7 +101,6 @@ bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> loc
 
 bool SequenceLocks(const CTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
 {
-
     return EvaluateSequenceLocks(block, CalculateSequenceLocks(tx, flags, prevHeights, block));
 }
 
@@ -121,7 +111,6 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx)
     {
         nSigOps += txin.scriptSig.GetSigOpCount(false);
     }
-
     for (const auto& txout : tx.vout)
     {
         nSigOps += txout.scriptPubKey.GetSigOpCount(false);
@@ -175,8 +164,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
     if (tx.vout.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-
-    // 交易不能大于1M
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
@@ -184,23 +171,15 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
     CAmount nValueOut = 0;
     for (const auto& txout : tx.vout)
     {
-
-        // 输出的上下值判断
         if (txout.nValue < 0)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
-
         if (txout.nValue > MAX_MONEY)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
-
         nValueOut += txout.nValue;
-
-
-        // 加上去后再检查一下是否会溢出
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
     }
 
-    // 判断一下是否有重复的input (用in的prev out做计算)
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
     if (fCheckDuplicateInputs) {
         std::set<COutPoint> vInOutPoints;
@@ -211,7 +190,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
         }
     }
 
-    // 如果是coinbase 则 in的大小必须在 [2,100]之内
     if (tx.IsCoinBase())
     {
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
@@ -219,7 +197,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
     }
     else
     {
-        // prev out 不能为空
         for (const auto& txin : tx.vin)
             if (txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
@@ -232,21 +209,16 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
 {
     // are the actual inputs available?
     if (!inputs.HaveInputs(tx)) {
-
-        // input 引用的输出的检查
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-missingorspent", false,
                          strprintf("%s: inputs missing/spent", __func__));
     }
 
     CAmount nValueIn = 0;
     for (unsigned int i = 0; i < tx.vin.size(); ++i) {
-
         const COutPoint &prevout = tx.vin[i].prevout;
         const Coin& coin = inputs.AccessCoin(prevout);
-
         assert(!coin.IsSpent());
 
-        // 如果上一笔交易是coinbase,那么检查是否有超过100个区块 (100个区块才能被消费)
         // If prev is coinbase, check that it's matured
         if (coin.IsCoinBase() && nSpendHeight - coin.nHeight < COINBASE_MATURITY) {
             return state.Invalid(false,
@@ -254,7 +226,6 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                 strprintf("tried to spend coinbase at depth %d", nSpendHeight - coin.nHeight));
         }
 
-        // 检查in来源的output是否溢出
         // Check for negative or overflow input values
         nValueIn += coin.out.nValue;
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn)) {
@@ -262,14 +233,12 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         }
     }
 
-    // 总计所有的输出
     const CAmount value_out = tx.GetValueOut();
     if (nValueIn < value_out) {
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
             strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(value_out)));
     }
 
-    // 源头 - 输出  =  矿工奖励
     // Tally transaction fees
     const CAmount txfee_aux = nValueIn - value_out;
     if (!MoneyRange(txfee_aux)) {
