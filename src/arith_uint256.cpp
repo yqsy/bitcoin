@@ -173,19 +173,10 @@ std::string base_uint<BITS>::ToString() const
 template <unsigned int BITS>
 unsigned int base_uint<BITS>::bits() const
 {
-    // 从头往前遍历
     for (int pos = WIDTH - 1; pos >= 0; pos--) {
-
-        // 如果里面有值
         if (pn[pos]) {
-
-            // 1个1个bit访问
             for (int nbits = 31; nbits > 0; nbits--) {
-
-                // 某 nbits 位有值
                 if (pn[pos] & 1 << nbits)
-
-                    // 返回有数字的具体某一位, 返回第一个有bit的地址
                     return 32 * pos + nbits + 1;
             }
             return 32 * pos + 1;
@@ -210,64 +201,50 @@ template void base_uint<256>::SetHex(const char*);
 template void base_uint<256>::SetHex(const std::string&);
 template unsigned int base_uint<256>::bits() const;
 
-
-// nBits => traget
 // This implementation directly uses shifts instead of going
 // through an intermediate MPI representation.
-arith_uint256& arith_uint256::SetCompact(uint32_t nBits, bool* pfNegative, bool* pfOverflow)
+arith_uint256& arith_uint256::SetCompact(uint32_t nCompact, bool* pfNegative, bool* pfOverflow)
 {
-    int exponent = nBits >> 24;
-
-    uint32_t mantissa = nBits & 0x007fffff;
-    if (exponent <= 3) {
-        // 指数小于尾数的本身的长度时,要把尾数本身也给修改.
-        mantissa >>= 8 * (3 - exponent);
-        *this = mantissa;
+    int nSize = nCompact >> 24;
+    uint32_t nWord = nCompact & 0x007fffff;
+    if (nSize <= 3) {
+        nWord >>= 8 * (3 - nSize);
+        *this = nWord;
     } else {
-        *this = mantissa;
-        // 指数表示了总体占据的byte数量,包括了尾数的本身
-        *this <<= 8 * (exponent - 3);
+        *this = nWord;
+        *this <<= 8 * (nSize - 3);
     }
     if (pfNegative)
-        *pfNegative = mantissa != 0 && (nBits & 0x00800000) != 0;
+        *pfNegative = nWord != 0 && (nCompact & 0x00800000) != 0;
     if (pfOverflow)
-        *pfOverflow = mantissa != 0 && ((exponent > 34) ||                   // nWord <= 0xff, 最大长度 = 32 + 2 = 34
-                                     (mantissa > 0xff && exponent > 33) ||   // 0xff < nWord && <= 0xffff, 最大长度 = 32 + 1 = 33
-                                     (mantissa > 0xffff && exponent > 32));  // nWord > 0xffff, 最大长度 = 32
+        *pfOverflow = nWord != 0 && ((nSize > 34) ||
+                                     (nWord > 0xff && nSize > 33) ||
+                                     (nWord > 0xffff && nSize > 32));
     return *this;
 }
 
-// target => nBits
 uint32_t arith_uint256::GetCompact(bool fNegative) const
 {
-    // 得到指数, 非下标
-    int exponent = (bits() + 7) / 8;
-
-    // 把尾数推出来
-    uint32_t nBtis = 0;
-    if (exponent <= 3) {
-        nBtis = GetLow64() << 8 * (3 - exponent);
+    int nSize = (bits() + 7) / 8;
+    uint32_t nCompact = 0;
+    if (nSize <= 3) {
+        nCompact = GetLow64() << 8 * (3 - nSize);
     } else {
-        arith_uint256 bn = *this >> 8 * (exponent - 3);
-        nBtis = bn.GetLow64();
+        arith_uint256 bn = *this >> 8 * (nSize - 3);
+        nCompact = bn.GetLow64();
     }
-
-    // 如果符号位为1,则整体右移动一字节, 但是会把尾数冲掉吧
     // The 0x00800000 bit denotes the sign.
     // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
-    if (nBtis & 0x00800000) {
-        nBtis >>= 8;
-        exponent++; // 回头移动回来时会增加1 个移动字节数
+    if (nCompact & 0x00800000) {
+        nCompact >>= 8;
+        nSize++;
     }
-
-    // 这个时候只有尾数
-    assert((nBtis & ~0x007fffff) == 0);
-    assert(exponent < 256);
-    nBtis |= exponent << 24;
-    nBtis |= (fNegative && (nBtis & 0x007fffff) ? 0x00800000 : 0);
-    return nBtis;
+    assert((nCompact & ~0x007fffff) == 0);
+    assert(nSize < 256);
+    nCompact |= nSize << 24;
+    nCompact |= (fNegative && (nCompact & 0x007fffff) ? 0x00800000 : 0);
+    return nCompact;
 }
-
 
 uint256 ArithToUint256(const arith_uint256 &a)
 {
@@ -276,8 +253,6 @@ uint256 ArithToUint256(const arith_uint256 &a)
         WriteLE32(b.begin() + x*4, a.pn[x]);
     return b;
 }
-
-
 arith_uint256 UintToArith256(const uint256 &a)
 {
     arith_uint256 b;
