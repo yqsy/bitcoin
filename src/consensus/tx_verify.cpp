@@ -93,6 +93,9 @@ bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> loc
 {
     assert(block.pprev);
     int64_t nBlockTime = block.pprev->GetMedianTimePast();
+    // first 高度  second 时间
+    // nSequence 高度 >= 当前区块高度. 高度还没到
+    // nSequence 时间 >= 当前区块时间(中位数). 时间还没到
     if (lockPair.first >= block.nHeight || lockPair.second >= nBlockTime)
         return false;
 

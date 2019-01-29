@@ -68,21 +68,21 @@ public:
 
     /* Setting nSequence to this value for every input in a transaction
      * disables nLockTime. */
-    static const uint32_t SEQUENCE_FINAL = 0xffffffff;
+    static const uint32_t SEQUENCE_FINAL = 0xffffffff;   // 禁用nLockTime
 
     /* Below flags apply in the context of BIP 68*/
     /* If this flag set, CTxIn::nSequence is NOT interpreted as a
      * relative lock-time. */
-    static const uint32_t SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31);
+    static const uint32_t SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31); // 禁用SEQUENCE
 
     /* If CTxIn::nSequence encodes a relative lock-time and this flag
      * is set, the relative lock-time has units of 512 seconds,
      * otherwise it specifies blocks with a granularity of 1. */
-    static const uint32_t SEQUENCE_LOCKTIME_TYPE_FLAG = (1 << 22);
+    static const uint32_t SEQUENCE_LOCKTIME_TYPE_FLAG = (1 << 22); // 设置了表示基于时间,以512秒为粒度为单位. 否则是块
 
     /* If CTxIn::nSequence encodes a relative lock-time, this mask is
      * applied to extract that lock-time from the sequence field. */
-    static const uint32_t SEQUENCE_LOCKTIME_MASK = 0x0000ffff;
+    static const uint32_t SEQUENCE_LOCKTIME_MASK = 0x0000ffff;     // 有效值
 
     /* In order to use the same number of bits to encode roughly the
      * same wall-clock duration, and because blocks are naturally
@@ -91,7 +91,7 @@ public:
      * Converting from CTxIn::nSequence to seconds is performed by
      * multiplying by 512 = 2^9, or equivalently shifting up by
      * 9 bits. */
-    static const int SEQUENCE_LOCKTIME_GRANULARITY = 9;
+    static const int SEQUENCE_LOCKTIME_GRANULARITY = 9; // 1 << 9 = 512 , 单位到秒
 
     CTxIn()
     {
