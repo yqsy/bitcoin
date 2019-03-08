@@ -18,10 +18,10 @@ CAmount GetRequiredFee(const CWallet& wallet, unsigned int nTxBytes)
     return GetRequiredFeeRate(wallet).GetFee(nTxBytes);
 }
 
-
+// 这个函数是选择一个计算费用的策略,包括保守,经济,再和交易大小计算出来具体的聪数
 CAmount GetMinimumFee(const CWallet& wallet, unsigned int nTxBytes, const CCoinControl& coin_control, const CTxMemPool& pool, const CBlockPolicyEstimator& estimator, FeeCalculation* feeCalc)
-{
-    CAmount fee_needed = GetMinimumFeeRate(wallet, coin_control, pool, estimator, feeCalc).GetFee(nTxBytes);
+{ // 费率是 sat / k.  乘以交易字节数,/1000 计算出来费用
+    CAmount fee_needed = GetMinimumFeeRate(wallet, coin_control, pool, estimator, feeCalc).GetFee(nTxBytes); // 注意这边后面拖着个!!!
     // Always obey the maximum
     if (fee_needed > maxTxFee) {
         fee_needed = maxTxFee;
@@ -61,14 +61,14 @@ CFeeRate GetMinimumFeeRate(const CWallet& wallet, const CCoinControl& coin_contr
         // By default estimates are economical iff we are signaling opt-in-RBF
         bool conservative_estimate = !coin_control.m_signal_bip125_rbf.get_value_or(wallet.m_signal_rbf);
         // Allow to override the default fee estimate mode over the CoinControl instance
-        if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true;
-        else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;
+        if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true; // 保守 -> 保守估计 (默认)
+        else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;// 经济 -> 不保守估计
 
-        feerate_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate);
+        feerate_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate); // 智能预估费用
         if (feerate_needed == CFeeRate(0)) {
             // if we don't have enough data for estimateSmartFee, then use fallback fee
             feerate_needed = wallet.m_fallback_fee;
-            if (feeCalc) feeCalc->reason = FeeReason::FALLBACK;
+            if (feeCalc) feeCalc->reason = FeeReason::FALLBACK; // 如果预估发生错误, 那么使用FALLBACK方案
 
             // directly return if fallback fee is disabled (feerate 0 == disabled)
             if (wallet.m_fallback_fee == CFeeRate(0)) return feerate_needed;
@@ -82,7 +82,7 @@ CFeeRate GetMinimumFeeRate(const CWallet& wallet, const CCoinControl& coin_contr
     }
 
     // prevent user from paying a fee below the required fee rate
-    CFeeRate required_feerate = GetRequiredFeeRate(wallet);
+    CFeeRate required_feerate = GetRequiredFeeRate(wallet); // 获取费率
     if (required_feerate > feerate_needed) {
         feerate_needed = required_feerate;
         if (feeCalc) feeCalc->reason = FeeReason::REQUIRED;

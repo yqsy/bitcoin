@@ -569,7 +569,7 @@ static UniValue sendtoaddress(const JSONRPCRequest& request)
         fSubtractFeeFromAmount = request.params[4].get_bool();
     }
 
-    CCoinControl coin_control;
+        CCoinControl coin_control;
     if (!request.params[5].isNull()) {
         coin_control.m_signal_bip125_rbf = request.params[5].get_bool();
     }

@@ -569,35 +569,43 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         *pfMissingInputs = false;
     }
 
+    // 1. 交易的检查
     if (!CheckTransaction(tx, state))
         return false; // state filled in by CheckTransaction
 
+        // 2. 不能是coinbase
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "coinbase");
 
+
+    // 3. 再次交易检查
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
     if (fRequireStandard && !IsStandardTx(tx, reason))
         return state.DoS(0, false, REJECT_NONSTANDARD, reason);
 
+    // 4. 交易部分数据不能小于最小值
     // Do not work on transactions that are too small.
     // A transaction with 1 segwit input and 1 P2WPHK output has non-witness size of 82 bytes.
     // Transactions smaller than this are not relayed to reduce unnecessary malloc overhead.
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) < MIN_STANDARD_TX_NONWITNESS_SIZE)
         return state.DoS(0, false, REJECT_NONSTANDARD, "tx-size-small");
 
+    // 5. nLockTime检查, 时间到了才能上链. 绝对时间锁
     // Only accept nLockTime-using transactions that can be mined in the next
     // block; we don't want our mempool filled up with transactions that can't
     // be mined yet.
     if (!CheckFinalTx(tx, STANDARD_LOCKTIME_VERIFY_FLAGS))
         return state.DoS(0, false, REJECT_NONSTANDARD, "non-final");
 
+    // 5. 交易是否已经存在交易内存池中了
     // is it already in the memory pool?
     if (pool.exists(hash)) {
         return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-mempool");
     }
 
+    // 6. 冲突 ?? BIP125 是什么意思,不是很懂
     // Check for conflicts with in-memory transactions
     std::set<uint256> setConflicts;
     for (const CTxIn &txin : tx.vin)
@@ -649,8 +657,11 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         CCoinsViewMemPool viewMemPool(pcoinsTip.get(), pool);
         view.SetBackend(viewMemPool);
 
+        // 7. 检查所有的inputs是否存在 (也就是对应的outputs)
+
         // do all inputs exist?
         for (const CTxIn& txin : tx.vin) {
+            // 这里可以看到查询是通过hash+n的.  内存在查到后会缓存一会的
             if (!pcoinsTip->HaveCoinInCache(txin.prevout)) {
                 coins_to_uncache.push_back(txin.prevout);
             }
@@ -681,28 +692,37 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         // be mined yet.
         // Must keep pool.cs for this unless we change CheckSequenceLocks to take a
         // CoinsViewCache instead of create its own
+
+        // 8. 检查相对时间锁
         if (!CheckSequenceLocks(tx, STANDARD_LOCKTIME_VERIFY_FLAGS, &lp))
             return state.DoS(0, false, REJECT_NONSTANDARD, "non-BIP68-final");
 
+        // 9. 检查交易的输入
         CAmount nFees = 0;
         if (!Consensus::CheckTxInputs(tx, state, view, GetSpendHeight(view), nFees)) {
             return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), FormatStateMessage(state));
         }
 
+        // 10. 检查不规范的 P2SH
         // Check for non-standard pay-to-script-hash in inputs
         if (fRequireStandard && !AreInputsStandard(tx, view))
             return state.Invalid(false, REJECT_NONSTANDARD, "bad-txns-nonstandard-inputs");
 
+        // 11. 检查不规范的 P2WSH的见证
         // Check for non-standard witness in P2WSH
         if (tx.HasWitness() && fRequireStandard && !IsWitnessStandard(tx, view))
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-witness-nonstandard", true);
 
+        // 12. 检查交易的符号数量
         int64_t nSigOpsCost = GetTransactionSigOpCost(tx, view, STANDARD_SCRIPT_VERIFY_FLAGS);
 
+
+        // 13. 费用已经有了, 那么把已有的费用和现在的费用做累加
         // nModifiedFees includes any fee deltas from PrioritiseTransaction
         CAmount nModifiedFees = nFees;
         pool.ApplyDelta(hash, nModifiedFees);
 
+        // 14. 是否是引用的coinbase 奖励
         // Keep track of transactions that spend a coinbase, which we re-scan
         // during reorgs to ensure COINBASE_MATURITY is still met.
         bool fSpendsCoinbase = false;
@@ -714,6 +734,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             }
         }
 
+        // 15. CTxMemPoolEntry 对象
         CTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
                               fSpendsCoinbase, nSigOpsCost, lp);
         unsigned int nSize = entry.GetTxSize();
@@ -727,16 +748,19 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
                 strprintf("%d", nSigOpsCost));
 
+        // 16. pool中获取最小交易费用. 如果费用比交易池最小的交易的费用还小,那么拒绝
         CAmount mempoolRejectFee = pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nSize);
         if (!bypass_limits && mempoolRejectFee > 0 && nModifiedFees < mempoolRejectFee) {
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool min fee not met", false, strprintf("%d < %d", nModifiedFees, mempoolRejectFee));
         }
 
+        // 17.  小于最低手续费那么拒绝
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
         if (!bypass_limits && nModifiedFees < ::minRelayTxFee.GetFee(nSize)) {
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met", false, strprintf("%d < %d", nModifiedFees, ::minRelayTxFee.GetFee(nSize)));
         }
 
+        // 18. 手续费太高了也拒绝
         if (nAbsurdFee && nFees > nAbsurdFee)
             return state.Invalid(false,
                 REJECT_HIGHFEE, "absurdly-high-fee",
@@ -744,15 +768,22 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
         // Calculate in-mempool ancestors, up to a limit.
         CTxMemPool::setEntries setAncestors;
+
+        // 19. 限制祖先的个数 + 大小
         size_t nLimitAncestors = gArgs.GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
         size_t nLimitAncestorSize = gArgs.GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT)*1000;
+
+        // 20. 限制后代个数 + 大小
         size_t nLimitDescendants = gArgs.GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT);
         size_t nLimitDescendantSize = gArgs.GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT)*1000;
         std::string errString;
+
+        // 21. 检查 祖先???
         if (!pool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
             return state.DoS(0, false, REJECT_NONSTANDARD, "too-long-mempool-chain", false, errString);
         }
 
+        // 22. 如果在setConflicts中找到hashAncestor
         // A transaction that spends outputs that would be replaced by it is invalid. Now
         // that we have the set of all ancestors we can detect this
         // pathological case by making sure setConflicts and setAncestors don't
@@ -781,6 +812,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         // subsequent RemoveStaged() and addUnchecked() calls don't guarantee
         // mempool consistency for us.
         const bool fReplacementTransaction = setConflicts.size();
+
+        // 23. 代替手续费的判断
         if (fReplacementTransaction)
         {
             CFeeRate newFeeRate(nModifiedFees, nSize);
@@ -896,6 +929,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
         constexpr unsigned int scriptVerifyFlags = STANDARD_SCRIPT_VERIFY_FLAGS;
 
+        // 24.  再次检查输入
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
         PrecomputedTransactionData txdata(tx);
@@ -927,6 +961,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         // There is a similar check in CreateNewBlock() to prevent creating
         // invalid blocks (using TestBlockValidity), however allowing such
         // transactions into the mempool can be exploited as a DoS attack.
+
+        // 再次检查inputs
         unsigned int currentBlockScriptVerifyFlags = GetBlockScriptFlags(chainActive.Tip(), Params().GetConsensus());
         if (!CheckInputsFromMempoolAndCache(tx, state, view, pool, currentBlockScriptVerifyFlags, true, txdata)) {
             return error("%s: BUG! PLEASE REPORT THIS! CheckInputs failed against latest-block but not STANDARD flags %s, %s",
@@ -958,6 +994,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         // - the transaction is not dependent on any other transactions in the mempool
         bool validForFeeEstimation = !fReplacementTransaction && !bypass_limits && IsCurrentForFeeEstimation() && pool.HasNoInputsOf(tx);
 
+        // 增加到内存中
         // Store transaction in memory
         pool.addUnchecked(hash, entry, setAncestors, validForFeeEstimation);
 
@@ -3348,7 +3385,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
     // large by filling up the coinbase witness, which doesn't change
     // the block hash, so we couldn't mark the block as permanently
     // failed).
-    if (GetBlockWeight(block) > MAX_BLOCK_WEIGHT) {
+        if (GetBlockWeight(block) > MAX_BLOCK_WEIGHT) {
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-weight", false, strprintf("%s : weight limit failed", __func__));
     }
 
