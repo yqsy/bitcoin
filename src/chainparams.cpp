@@ -157,6 +157,8 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
+        vSeeds.emplace_back("127.0.0.1");
+
         checkpointData = {
             {
 
